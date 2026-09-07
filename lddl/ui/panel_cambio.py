@@ -1,50 +1,51 @@
 """Panel de cambio de divisa."""
 
-import tkinter as tk
+from tkinter import ttk
 
 from ..caja import obtener_fondo_hoy, obtener_resumen_caja, registrar_operacion_cambio
+from .estilos import COLOR_TOTAL
 
 
 class PanelCambioMixin:
     """Compra y venta de divisa."""
 
     def crear_panel_cambio_divisa(self):
-        self.frame_contenido_cambio = tk.Frame(self.scrollable_frame)
-        frame_saldo = tk.LabelFrame(self.frame_contenido_cambio, text="Efectivo en Caja (hoy)", padx=10, pady=10)
-        frame_saldo.pack(fill="x", padx=10, pady=5)
-        self.label_saldo = tk.Label(frame_saldo, text="", font=("Arial", 12))
-        self.label_saldo.pack()
+        self.frame_contenido_cambio = ttk.Frame(self.scrollable_frame, style="Lienzo.TFrame")
+        frame_saldo = ttk.LabelFrame(self.frame_contenido_cambio, text="EFECTIVO EN CAJA (HOY)", padding=7)
+        frame_saldo.pack(fill="x", padx=8, pady=3)
+        self.label_saldo = ttk.Label(frame_saldo, text="", font=("Segoe UI", 11, "bold"), foreground=COLOR_TOTAL)
+        self.label_saldo.pack(anchor="w")
         self.actualizar_saldo_cambio()
-        frame_form = tk.LabelFrame(self.frame_contenido_cambio, text="Registrar Operación", padx=15, pady=15)
-        frame_form.pack(fill="x", padx=10, pady=10)
-        tk.Label(frame_form, text="Tipo de operación:", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="w", padx=5, pady=5)
-        frame_tipo = tk.Frame(frame_form)
+        frame_form = ttk.LabelFrame(self.frame_contenido_cambio, text="REGISTRAR OPERACIÓN", padding=12)
+        frame_form.pack(fill="x", padx=8, pady=3)
+        ttk.Label(frame_form, text="Tipo de operación:", font=("Segoe UI", 9, "bold")).grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        frame_tipo = ttk.Frame(frame_form)
         frame_tipo.grid(row=0, column=1, sticky="w", padx=5, pady=5)
-        tk.Radiobutton(frame_tipo, text="Compra", variable=self.cambio_tipo, value="compra", fg="green", command=self.actualizar_monto_cup).pack(side="left", padx=10)
-        tk.Radiobutton(frame_tipo, text="Venta", variable=self.cambio_tipo, value="venta", fg="red", command=self.actualizar_monto_cup).pack(side="left", padx=10)
-        tk.Label(frame_form, text="Moneda:", font=("Arial", 10, "bold")).grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        frame_moneda = tk.Frame(frame_form)
+        ttk.Radiobutton(frame_tipo, text="Compra", variable=self.cambio_tipo, value="compra", style="Success.TRadiobutton", command=self.actualizar_monto_cup).pack(side="left", padx=10)
+        ttk.Radiobutton(frame_tipo, text="Venta", variable=self.cambio_tipo, value="venta", style="Danger.TRadiobutton", command=self.actualizar_monto_cup).pack(side="left", padx=10)
+        ttk.Label(frame_form, text="Moneda:", font=("Segoe UI", 9, "bold")).grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        frame_moneda = ttk.Frame(frame_form)
         frame_moneda.grid(row=1, column=1, sticky="w", padx=5, pady=5)
-        tk.Radiobutton(frame_moneda, text="USD", variable=self.cambio_moneda, value="USD", command=self.actualizar_saldo_cambio).pack(side="left", padx=10)
-        tk.Radiobutton(frame_moneda, text="EUR", variable=self.cambio_moneda, value="EUR", command=self.actualizar_saldo_cambio).pack(side="left", padx=10)
-        tk.Label(frame_form, text="Cantidad:", font=("Arial", 10, "bold")).grid(row=2, column=0, sticky="w", padx=5, pady=5)
-        self.entry_cantidad = tk.Entry(frame_form, textvariable=self.cambio_cantidad, width=15, font=("Arial", 12))
+        ttk.Radiobutton(frame_moneda, text="USD", variable=self.cambio_moneda, value="USD", command=self.actualizar_saldo_cambio).pack(side="left", padx=10)
+        ttk.Radiobutton(frame_moneda, text="EUR", variable=self.cambio_moneda, value="EUR", command=self.actualizar_saldo_cambio).pack(side="left", padx=10)
+        ttk.Label(frame_form, text="Cantidad:", font=("Segoe UI", 9, "bold")).grid(row=2, column=0, sticky="w", padx=5, pady=5)
+        self.entry_cantidad = ttk.Entry(frame_form, textvariable=self.cambio_cantidad, width=15, font=("Segoe UI", 11))
         self.entry_cantidad.grid(row=2, column=1, sticky="w", padx=5, pady=5)
         self.entry_cantidad.bind("<KeyRelease>", self.actualizar_monto_cup)
-        tk.Label(frame_form, text="Tasa (CUP):", font=("Arial", 10, "bold")).grid(row=3, column=0, sticky="w", padx=5, pady=5)
-        self.entry_tasa_cambio = tk.Entry(frame_form, textvariable=self.cambio_tasa, width=15, font=("Arial", 12))
+        ttk.Label(frame_form, text="Tasa (CUP):", font=("Segoe UI", 9, "bold")).grid(row=3, column=0, sticky="w", padx=5, pady=5)
+        self.entry_tasa_cambio = ttk.Entry(frame_form, textvariable=self.cambio_tasa, width=15, font=("Segoe UI", 11))
         self.entry_tasa_cambio.grid(row=3, column=1, sticky="w", padx=5, pady=5)
         self.entry_tasa_cambio.bind("<KeyRelease>", self.actualizar_monto_cup)
-        tk.Label(frame_form, text="Monto en CUP:", font=("Arial", 10, "bold")).grid(row=4, column=0, sticky="w", padx=5, pady=5)
-        self.label_monto_cup = tk.Label(frame_form, textvariable=self.cambio_monto_cup, font=("Arial", 12, "bold"), fg="purple")
+        ttk.Label(frame_form, text="Monto en CUP:", font=("Segoe UI", 9, "bold")).grid(row=4, column=0, sticky="w", padx=5, pady=5)
+        self.label_monto_cup = ttk.Label(frame_form, textvariable=self.cambio_monto_cup, style="TotalValor.TLabel")
         self.label_monto_cup.grid(row=4, column=1, sticky="w", padx=5, pady=5)
-        tk.Label(frame_form, text="Observaciones:", font=("Arial", 10, "bold")).grid(row=5, column=0, sticky="w", padx=5, pady=5)
-        self.entry_obs = tk.Entry(frame_form, textvariable=self.cambio_observaciones, width=40)
+        ttk.Label(frame_form, text="Observaciones:", font=("Segoe UI", 9, "bold")).grid(row=5, column=0, sticky="w", padx=5, pady=5)
+        self.entry_obs = ttk.Entry(frame_form, textvariable=self.cambio_observaciones, width=40)
         self.entry_obs.grid(row=5, column=1, sticky="w", padx=5, pady=5)
-        frame_botones_cambio = tk.Frame(frame_form)
+        frame_botones_cambio = ttk.Frame(frame_form)
         frame_botones_cambio.grid(row=6, column=0, columnspan=2, pady=15)
-        tk.Button(frame_botones_cambio, text="Registrar Operación", command=self.guardar_operacion_cambio, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"), width=20, height=2).pack(side="left", padx=10)
-        tk.Button(frame_botones_cambio, text="Limpiar", command=self.limpiar_formulario_cambio, bg="#FF9800", fg="white", font=("Arial", 10, "bold"), width=15).pack(side="left", padx=10)
+        ttk.Button(frame_botones_cambio, text="Registrar Operación", command=self.guardar_operacion_cambio, style="Success.TButton", width=22).pack(side="left", padx=(0, 10))
+        ttk.Button(frame_botones_cambio, text="Limpiar", command=self.limpiar_formulario_cambio, style="Neutro.TButton", width=15).pack(side="left", padx=10)
 
     def actualizar_saldo_cambio(self):
         try:
