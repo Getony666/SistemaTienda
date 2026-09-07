@@ -13,73 +13,75 @@ class PanelVentasMixin:
     """Búsqueda de productos, carrito y formularios de la pantalla de ventas."""
 
     def crear_panel_ventas(self):
-        self.frame_contenido_ventas = tk.Frame(self.scrollable_frame)
+        self.frame_contenido_ventas = ttk.Frame(self.scrollable_frame)
 
-        self.frame_dos_columnas = tk.Frame(self.frame_contenido_ventas)
+        self.frame_dos_columnas = ttk.Frame(self.frame_contenido_ventas)
         self.frame_dos_columnas.pack(fill="both", expand=True, padx=10, pady=5)
         self.frame_dos_columnas.grid_columnconfigure(0, weight=1, uniform="columnas_ventas")
         self.frame_dos_columnas.grid_columnconfigure(1, weight=1, uniform="columnas_ventas")
         self.frame_dos_columnas.grid_rowconfigure(0, weight=1)
 
-        self.columna_izquierda = tk.Frame(self.frame_dos_columnas)
+        self.columna_izquierda = ttk.Frame(self.frame_dos_columnas)
         self.columna_izquierda.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-        self.columna_derecha = tk.Frame(self.frame_dos_columnas)
+        self.columna_derecha = ttk.Frame(self.frame_dos_columnas)
         self.columna_derecha.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
 
         self.crear_seccion_busqueda_y_resultados()
         self.crear_botones_modulos()
-        self.frame_contenedor_dinamico = tk.Frame(self.columna_derecha)
+        self.frame_contenedor_dinamico = ttk.Frame(self.columna_derecha)
         self.frame_contenedor_dinamico.pack(fill="both", expand=True, padx=0, pady=5)
         self.crear_seccion_nuevo_producto()
         self.crear_seccion_carrito()
         self.frame_nuevo_producto.pack_forget()
 
     def crear_botones_modulos(self):
-        frame_modulos = tk.LabelFrame(self.columna_derecha, text="⚡ Acciones", padx=10, pady=10)
+        frame_modulos = ttk.LabelFrame(self.columna_derecha, text="⚡ Acciones", padding=10)
         frame_modulos.pack(fill="x", padx=0, pady=5)
         for col in range(3):
             frame_modulos.grid_columnconfigure(col, weight=1, uniform="acciones")
 
         acciones = [
-            ("📦 Nuevo Producto", self.mostrar_formulario_nuevo_producto, "#2196F3", 0, 0),
-            ("💵 Entrada de Efectivo", self.mostrar_formulario_entrada_efectivo, "#4CAF50", 0, 1),
-            ("📤 Salida de Inventario", self.mostrar_formulario_salida, "#FF5722", 0, 2),
-            ("✏️ Actualizar Producto", self.cargar_para_actualizar, "#FF9800", 1, 0),
-            ("💸 Salida de Efectivo", self.mostrar_formulario_salida_efectivo, "#F44336", 1, 1),
-            ("⚠️ Merma", self.mostrar_formulario_merma, "#9C27B0", 1, 2),
-            ("🗑️ Eliminar Producto", self.eliminar_productos_seleccionados, "#D32F2F", 2, 0),
+            ("📦 Nuevo Producto", self.mostrar_formulario_nuevo_producto, "Primary", 0, 0),
+            ("💵 Entrada de Efectivo", self.mostrar_formulario_entrada_efectivo, "Success", 0, 1),
+            ("📤 Salida de Inventario", self.mostrar_formulario_salida, "DeepOrange", 0, 2),
+            ("✏️ Actualizar Producto", self.cargar_para_actualizar, "Warning", 1, 0),
+            ("💸 Salida de Efectivo", self.mostrar_formulario_salida_efectivo, "Danger", 1, 1),
+            ("⚠️ Merma", self.mostrar_formulario_merma, "Purple", 1, 2),
+            ("🗑️ Eliminar Producto", self.eliminar_productos_seleccionados, "Danger", 2, 0),
         ]
-        for texto, comando, color, fila, col in acciones:
-            tk.Button(frame_modulos, text=texto, command=comando, bg=color, fg="white",
-                      relief="flat", pady=5, wraplength=160).grid(row=fila, column=col, padx=3, pady=3, sticky="ew")
+        for texto, comando, estilo, fila, col in acciones:
+            ttk.Button(frame_modulos, text=texto, command=comando,
+                       style=f"{estilo}Ajustado.TButton").grid(row=fila, column=col, padx=3, pady=3, sticky="ew")
 
     def crear_seccion_busqueda_y_resultados(self):
-            self.frame_busqueda_resultados = tk.Frame(self.columna_izquierda)
-            frame_busqueda = tk.LabelFrame(self.frame_busqueda_resultados, text="Buscar Productos", padx=10, pady=10)
+            self.frame_busqueda_resultados = ttk.Frame(self.columna_izquierda)
+            frame_busqueda = ttk.LabelFrame(self.frame_busqueda_resultados, text="Buscar Productos", padding=10)
             frame_busqueda.pack(fill="x", padx=0, pady=5)
-            frame_interno = tk.Frame(frame_busqueda)
+            frame_interno = ttk.Frame(frame_busqueda)
             frame_interno.pack(fill="x")
             frame_interno.grid_columnconfigure(0, weight=1)
 
-            frame_linea_busqueda = tk.Frame(frame_interno)
+            frame_linea_busqueda = ttk.Frame(frame_interno)
             frame_linea_busqueda.grid(row=0, column=0, pady=5, sticky="ew")
             frame_linea_busqueda.grid_columnconfigure(1, weight=1)
 
-            tk.Label(frame_linea_busqueda, text="Producto:").grid(row=0, column=0, padx=(0, 8), sticky="w")
+            ttk.Label(frame_linea_busqueda, text="Producto:").grid(row=0, column=0, padx=(0, 8), sticky="w")
             self.busqueda_var = tk.StringVar()
-            self.entry_busqueda = tk.Entry(frame_linea_busqueda, textvariable=self.busqueda_var)
+            self.entry_busqueda = ttk.Entry(frame_linea_busqueda, textvariable=self.busqueda_var)
             self.entry_busqueda.grid(row=0, column=1, sticky="ew", padx=(0, 10))
-            tk.Button(frame_linea_busqueda, text="🔍 Buscar", command=self.buscar,
-                      bg="#2196F3", fg="white", relief="flat", padx=10, pady=4).grid(row=0, column=2, padx=(0, 6))
-            tk.Button(frame_linea_busqueda, text="Mostrar Todos", command=self.cargar_productos,
-                      bg="#FF9800", fg="white", relief="flat", padx=10, pady=4).grid(row=0, column=3, padx=(0, 30))
-            tk.Button(frame_linea_busqueda, text="➕ Agregar al Carrito", command=self.agregar_desde_resultados,
-                      bg="#4CAF50", fg="white", relief="flat", padx=12, pady=4).grid(row=0, column=4, sticky="e")
+            ttk.Button(frame_linea_busqueda, text="🔍 Buscar", command=self.buscar,
+                       style="Primary.TButton").grid(row=0, column=2, padx=(0, 6))
+            ttk.Button(frame_linea_busqueda, text="Mostrar Todos", command=self.cargar_productos,
+                       style="Warning.TButton").grid(row=0, column=3, padx=(0, 30))
+            ttk.Button(frame_linea_busqueda, text="➕ Agregar al Carrito", command=self.agregar_desde_resultados,
+                       style="Success.TButton").grid(row=0, column=4, sticky="e")
 
             self.frame_sugerencias = tk.Frame(frame_busqueda, bg="white", relief="solid", bd=1)
             self.frame_sugerencias.pack(fill="x", pady=2)
             self.frame_sugerencias.pack_forget()
-            self.lista_sugerencias = tk.Listbox(self.frame_sugerencias, height=6, width=40, font=("Arial", 10), bg="white", selectmode=tk.SINGLE)
+            self.lista_sugerencias = tk.Listbox(self.frame_sugerencias, height=6, width=40, font=("Segoe UI", 10),
+                                                 bg="white", relief="flat", highlightthickness=0,
+                                                 selectbackground="#2196F3", selectmode=tk.SINGLE)
             self.lista_sugerencias.pack(fill="x")
             self.lista_sugerencias.bind("<ButtonRelease-1>", self.on_sugerencia_seleccionada)
             self.entry_busqueda.bind("<KeyRelease>", self.on_key_release)
@@ -88,9 +90,9 @@ class PanelVentasMixin:
             self.entry_busqueda.bind("<Down>", self.on_flecha_abajo)
             self.entry_busqueda.bind("<Up>", self.on_flecha_arriba)
 
-            frame_resultados = tk.LabelFrame(self.frame_busqueda_resultados, text="Productos Disponibles", padx=10, pady=10)
+            frame_resultados = ttk.LabelFrame(self.frame_busqueda_resultados, text="Productos Disponibles", padding=10)
             frame_resultados.pack(fill="x", padx=0, pady=5)
-            contenedor = tk.Frame(frame_resultados)
+            contenedor = ttk.Frame(frame_resultados)
             contenedor.pack(fill="both", expand=True)
             contenedor.grid_columnconfigure(0, weight=1)
             contenedor.grid_rowconfigure(0, weight=1)
@@ -117,33 +119,33 @@ class PanelVentasMixin:
             self.frame_busqueda_resultados.pack(fill="x", padx=0, pady=0)
 
     def crear_seccion_nuevo_producto(self):
-        self.frame_nuevo_producto = tk.LabelFrame(self.frame_contenedor_dinamico, text="Nuevo producto", padx=10, pady=10)
-        tk.Label(self.frame_nuevo_producto, text="Nombre:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
-        self.entry_nombre = tk.Entry(self.frame_nuevo_producto, textvariable=self.nombre, width=30)
+        self.frame_nuevo_producto = ttk.LabelFrame(self.frame_contenedor_dinamico, text="Nuevo producto", padding=10)
+        ttk.Label(self.frame_nuevo_producto, text="Nombre:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        self.entry_nombre = ttk.Entry(self.frame_nuevo_producto, textvariable=self.nombre, width=30)
         self.entry_nombre.grid(row=0, column=1, padx=5, pady=5)
-        tk.Label(self.frame_nuevo_producto, text="Proveedor:").grid(row=0, column=2, sticky="e", padx=5, pady=5)
-        tk.Entry(self.frame_nuevo_producto, textvariable=self.proveedor, width=20).grid(row=0, column=3, padx=5, pady=5)
-        tk.Label(self.frame_nuevo_producto, text="Precio Compra (CUP):").grid(row=1, column=0, sticky="e", padx=5, pady=5)
-        tk.Entry(self.frame_nuevo_producto, textvariable=self.precio_compra, width=15).grid(row=1, column=1, padx=5, pady=5)
-        tk.Label(self.frame_nuevo_producto, text="Precio Venta (CUP):").grid(row=1, column=2, sticky="e", padx=5, pady=5)
-        tk.Entry(self.frame_nuevo_producto, textvariable=self.precio_venta, width=15).grid(row=1, column=3, padx=5, pady=5)
-        tk.Label(self.frame_nuevo_producto, text="Stock:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
-        tk.Entry(self.frame_nuevo_producto, textvariable=self.stock, width=15).grid(row=2, column=1, padx=5, pady=5)
-        tk.Label(self.frame_nuevo_producto, text="Tipo:").grid(row=2, column=2, sticky="e", padx=5, pady=5)
+        ttk.Label(self.frame_nuevo_producto, text="Proveedor:").grid(row=0, column=2, sticky="e", padx=5, pady=5)
+        ttk.Entry(self.frame_nuevo_producto, textvariable=self.proveedor, width=20).grid(row=0, column=3, padx=5, pady=5)
+        ttk.Label(self.frame_nuevo_producto, text="Precio Compra (CUP):").grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(self.frame_nuevo_producto, textvariable=self.precio_compra, width=15).grid(row=1, column=1, padx=5, pady=5)
+        ttk.Label(self.frame_nuevo_producto, text="Precio Venta (CUP):").grid(row=1, column=2, sticky="e", padx=5, pady=5)
+        ttk.Entry(self.frame_nuevo_producto, textvariable=self.precio_venta, width=15).grid(row=1, column=3, padx=5, pady=5)
+        ttk.Label(self.frame_nuevo_producto, text="Stock:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(self.frame_nuevo_producto, textvariable=self.stock, width=15).grid(row=2, column=1, padx=5, pady=5)
+        ttk.Label(self.frame_nuevo_producto, text="Tipo:").grid(row=2, column=2, sticky="e", padx=5, pady=5)
         self.tipo_combobox = ttk.Combobox(self.frame_nuevo_producto, textvariable=self.tipo_producto, values=["unidad", "peso"], state="readonly", width=12)
         self.tipo_combobox.grid(row=2, column=3, padx=5, pady=5)
         self.tipo_combobox.set("unidad")
-        tk.Label(self.frame_nuevo_producto, text="Unidad:").grid(row=3, column=0, sticky="e", padx=5, pady=5)
-        tk.Entry(self.frame_nuevo_producto, textvariable=self.unidad_medida, width=15).grid(row=3, column=1, padx=5, pady=5)
-        tk.Label(self.frame_nuevo_producto, text="Fecha Venc.:").grid(row=3, column=2, sticky="e", padx=5, pady=5)
-        tk.Entry(self.frame_nuevo_producto, textvariable=self.fecha_vencimiento, width=15).grid(row=3, column=3, padx=5, pady=5)
-        tk.Label(self.frame_nuevo_producto, text="(YYYY-MM-DD)", font=("Arial", 8)).grid(row=3, column=4, padx=2, pady=5)
-        tk.Label(self.frame_nuevo_producto, text="ID:").grid(row=4, column=0, sticky="e", padx=5, pady=5)
-        tk.Entry(self.frame_nuevo_producto, textvariable=self.id_producto, width=10, state="readonly").grid(row=4, column=1, padx=5, pady=5)
-        frame_botones_form = tk.Frame(self.frame_nuevo_producto)
+        ttk.Label(self.frame_nuevo_producto, text="Unidad:").grid(row=3, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(self.frame_nuevo_producto, textvariable=self.unidad_medida, width=15).grid(row=3, column=1, padx=5, pady=5)
+        ttk.Label(self.frame_nuevo_producto, text="Fecha Venc.:").grid(row=3, column=2, sticky="e", padx=5, pady=5)
+        ttk.Entry(self.frame_nuevo_producto, textvariable=self.fecha_vencimiento, width=15).grid(row=3, column=3, padx=5, pady=5)
+        ttk.Label(self.frame_nuevo_producto, text="(YYYY-MM-DD)", font=("Segoe UI", 8)).grid(row=3, column=4, padx=2, pady=5)
+        ttk.Label(self.frame_nuevo_producto, text="ID:").grid(row=4, column=0, sticky="e", padx=5, pady=5)
+        ttk.Entry(self.frame_nuevo_producto, textvariable=self.id_producto, width=10, state="readonly").grid(row=4, column=1, padx=5, pady=5)
+        frame_botones_form = ttk.Frame(self.frame_nuevo_producto)
         frame_botones_form.grid(row=5, column=0, columnspan=5, pady=10)
-        tk.Button(frame_botones_form, text="Guardar", command=self.guardar_nuevo_producto, bg="#4CAF50", fg="white", width=12).pack(side="left", padx=5)
-        tk.Button(frame_botones_form, text="Cancelar", command=self.ocultar_formulario_nuevo_producto, bg="#f44336", fg="white", width=12).pack(side="left", padx=5)
+        ttk.Button(frame_botones_form, text="Guardar", command=self.guardar_nuevo_producto, style="Success.TButton", width=12).pack(side="left", padx=5)
+        ttk.Button(frame_botones_form, text="Cancelar", command=self.ocultar_formulario_nuevo_producto, style="Danger.TButton", width=12).pack(side="left", padx=5)
 
     def limpiar_formulario_nuevo_producto(self):
         self.id_producto.set("")
@@ -347,12 +349,12 @@ class PanelVentasMixin:
             self.tabla_resultados.insert("", "end", values=(p[0], p[1], p[2], p[3], p[4], p[5]))
 
     def crear_seccion_carrito(self):
-        self.frame_carrito = tk.LabelFrame(self.columna_izquierda, text="Carrito de Compras", padx=10, pady=10)
+        self.frame_carrito = ttk.LabelFrame(self.columna_izquierda, text="Carrito de Compras", padding=10)
         self.frame_carrito.pack(fill="both", expand=True, padx=0, pady=5)
         self.frame_carrito.grid_columnconfigure(0, weight=1)
         self.frame_carrito.grid_rowconfigure(0, weight=1)
 
-        contenedor = tk.Frame(self.frame_carrito)
+        contenedor = ttk.Frame(self.frame_carrito)
         contenedor.grid(row=0, column=0, sticky="nsew")
         contenedor.grid_columnconfigure(0, weight=1)
         contenedor.grid_rowconfigure(0, weight=0)
@@ -376,86 +378,89 @@ class PanelVentasMixin:
         self.tabla_carrito.bind("<ButtonRelease-1>", self.on_carrito_click)
         self.tabla_carrito.bind("<Double-1>", self.editar_cantidad_carrito)
 
-        self.frame_modulo_pago = tk.LabelFrame(self.columna_izquierda, text="Pago", padx=10, pady=10)
+        ttk.Separator(self.frame_carrito, orient="horizontal").grid(row=1, column=0, sticky="ew", pady=(10, 6))
+        frame_total_carrito = ttk.Frame(self.frame_carrito)
+        frame_total_carrito.grid(row=2, column=0, sticky="e")
+        ttk.Label(frame_total_carrito, text="TOTAL", font=("Segoe UI", 10, "bold")).pack(side="left", padx=(0, 6))
+        ttk.Label(frame_total_carrito, textvariable=self.total_var, style="Titulo.TLabel", foreground="#1976D2").pack(side="left")
+        ttk.Label(frame_total_carrito, text=" CUP", foreground="#1976D2").pack(side="left")
+
+        self.frame_modulo_pago = ttk.LabelFrame(self.columna_izquierda, text="Pago", padding=10)
         self.frame_modulo_pago.pack(fill="x", padx=0, pady=5)
 
-        frame_acciones = tk.Frame(self.frame_modulo_pago)
+        frame_acciones = ttk.Frame(self.frame_modulo_pago)
         frame_acciones.pack(fill="x")
         frame_acciones.grid_columnconfigure(0, weight=1)
 
-        frame_botones = tk.Frame(frame_acciones)
+        frame_botones = ttk.Frame(frame_acciones)
         frame_botones.grid(row=0, column=0, sticky="w")
-        self.check_transferencia = tk.Checkbutton(frame_botones, text="Transferencia", variable=self.transferencia_var, font=("Arial", 9), fg="#9C27B0", command=self.actualizar_por_transferencia)
+        self.check_transferencia = ttk.Checkbutton(frame_botones, text="Transferencia", variable=self.transferencia_var, style="Purple.TCheckbutton", command=self.actualizar_por_transferencia)
         self.check_transferencia.pack(side="left", padx=10)
-        self.check_mensajeria = tk.Checkbutton(frame_botones, text="Mensajería", variable=self.mensajeria_var, font=("Arial", 9), fg="#FF5722")
+        self.check_mensajeria = ttk.Checkbutton(frame_botones, text="Mensajería", variable=self.mensajeria_var, style="DeepOrange.TCheckbutton")
         self.check_mensajeria.pack(side="left", padx=5)
-        self.check_deuda = tk.Checkbutton(frame_botones, text="Deuda", variable=self.deuda_var, font=("Arial", 9, "bold"), fg="#D32F2F", command=self.toggle_observaciones_deuda)
+        self.check_deuda = ttk.Checkbutton(frame_botones, text="Deuda", variable=self.deuda_var, style="DeudaBold.TCheckbutton", command=self.toggle_observaciones_deuda)
         self.check_deuda.pack(side="left", padx=5)
 
-        frame_obs_deuda = tk.Frame(frame_acciones)
-        frame_obs_deuda.grid(row=1, column=0, pady=2, sticky="w")
-        tk.Label(frame_obs_deuda, text="Observaciones (deuda):", font=("Arial", 9)).pack(side="left", padx=5)
-        self.entry_obs_deuda = tk.Entry(frame_obs_deuda, textvariable=self.observaciones_deuda_var, width=40)
+        self.frame_obs_deuda = ttk.Frame(frame_acciones)
+        self.frame_obs_deuda.grid(row=1, column=0, pady=2, sticky="w")
+        ttk.Label(self.frame_obs_deuda, text="Observaciones (deuda):").pack(side="left", padx=5)
+        self.entry_obs_deuda = ttk.Entry(self.frame_obs_deuda, textvariable=self.observaciones_deuda_var, width=40)
         self.entry_obs_deuda.pack(side="left", padx=5)
         self.entry_obs_deuda.config(state="disabled")
+        self.frame_obs_deuda.grid_remove()
 
-        frame_pago = tk.Frame(frame_acciones)
+        frame_pago = ttk.Frame(frame_acciones)
         frame_pago.grid(row=2, column=0, sticky="ew", pady=5)
         frame_pago.grid_columnconfigure(0, weight=0)
         frame_pago.grid_columnconfigure(1, weight=0)
         frame_pago.grid_columnconfigure(2, weight=0)
         frame_pago.grid_columnconfigure(3, weight=1)
 
-        tk.Label(frame_pago, text="Pago en:", font=("Arial", 10)).grid(row=0, column=0, padx=5, sticky="e")
+        ttk.Label(frame_pago, text="Pago en:").grid(row=0, column=0, padx=5, sticky="e")
         self.combo_moneda = ttk.Combobox(frame_pago, textvariable=self.moneda_pago, values=["CUP", "USD", "EUR"], state="readonly", width=6)
         self.combo_moneda.grid(row=0, column=1, padx=5, sticky="w")
         self.combo_moneda.bind("<<ComboboxSelected>>", self.actualizar_moneda_pago)
-        tk.Label(frame_pago, text="Tasa (CUP):", font=("Arial", 10)).grid(row=0, column=2, padx=5, sticky="e")
-        self.entry_tasa = tk.Entry(frame_pago, textvariable=self.tasa_cambio, width=10)
+        ttk.Label(frame_pago, text="Tasa (CUP):").grid(row=0, column=2, padx=5, sticky="e")
+        self.entry_tasa = ttk.Entry(frame_pago, textvariable=self.tasa_cambio, width=10)
         self.entry_tasa.grid(row=0, column=3, padx=5, sticky="w")
         self.entry_tasa.bind("<KeyRelease>", self.actualizar_pago)
         self.entry_tasa.config(state="disabled")
 
-        frame_total = tk.Frame(frame_pago)
-        frame_total.grid(row=1, column=0, columnspan=4, padx=5, sticky="e")
-        tk.Label(frame_total, text="TOTAL:", font=("Arial", 12, "bold")).pack(side="left", padx=5)
-        tk.Label(frame_total, textvariable=self.total_var, font=("Arial", 12, "bold"), fg="blue").pack(side="left", padx=5)
-        tk.Label(frame_total, text="CUP", font=("Arial", 10)).pack(side="left", padx=(0, 5))
-
-        self.label_pagado = tk.Label(frame_pago, text="Pagado (efectivo):", font=("Arial", 10))
+        self.label_pagado = ttk.Label(frame_pago, text="Pagado (efectivo):")
         self.label_pagado.grid(row=2, column=0, padx=5, sticky="e")
-        self.entry_pagado = tk.Entry(frame_pago, textvariable=self.pagado_var, width=12)
+        self.entry_pagado = ttk.Entry(frame_pago, textvariable=self.pagado_var, width=12)
         self.entry_pagado.grid(row=2, column=1, padx=5, sticky="w")
         self.entry_pagado.bind("<FocusOut>", self.calcular_vuelto_silencioso)
         self.entry_pagado.bind("<KeyRelease>", self.calcular_vuelto)
-        self.label_moneda_pago = tk.Label(frame_pago, text="CUP", font=("Arial", 10), fg="blue")
+        self.label_moneda_pago = ttk.Label(frame_pago, text="CUP", foreground="#1976D2")
         self.label_moneda_pago.grid(row=2, column=2, padx=5, sticky="w")
 
-        self.frame_pago_extra = tk.Frame(frame_pago)
+        self.frame_pago_extra = ttk.Frame(frame_pago)
         self.frame_pago_extra.grid(row=3, column=0, columnspan=4, sticky="w", padx=5)
 
-        self.frame_transferencia = tk.Frame(self.frame_pago_extra)
-        tk.Label(self.frame_transferencia, text="Pago por transferencia (CUP):", font=("Arial", 9)).pack(side="left", padx=5)
-        self.entry_pago_transferencia = tk.Entry(self.frame_transferencia, textvariable=self.pago_transferencia_var, width=10)
+        self.frame_transferencia = ttk.Frame(self.frame_pago_extra)
+        fila_pago_transferencia = ttk.Frame(self.frame_transferencia)
+        fila_pago_transferencia.pack(side="top", anchor="w")
+        ttk.Label(fila_pago_transferencia, text="Pagado (Transferencia):").pack(side="left", padx=5)
+        self.entry_pago_transferencia = ttk.Entry(fila_pago_transferencia, textvariable=self.pago_transferencia_var, width=10)
         self.entry_pago_transferencia.pack(side="left", padx=5)
         self.entry_pago_transferencia.bind("<KeyRelease>", self.calcular_vuelto_con_pago_mixto)
-        self.entry_pago_transferencia.config(state="normal")
-        self.label_pago_efectivo_resto = tk.Label(self.frame_transferencia, text="", font=("Arial", 9), fg="blue")
-        self.label_pago_efectivo_resto.pack(side="left", padx=5)
+        self.label_pago_efectivo_resto = ttk.Label(self.frame_transferencia, text="", foreground="#1976D2")
+        self.label_pago_efectivo_resto.pack(side="top", anchor="w", padx=5, pady=(2, 0))
 
-        self.frame_adicional_divisa = tk.Frame(self.frame_pago_extra)
+        self.frame_adicional_divisa = ttk.Frame(self.frame_pago_extra)
 
-        subframe_efectivo = tk.Frame(self.frame_adicional_divisa)
-        tk.Label(subframe_efectivo, text="Pago en CUP adicional (efectivo):", font=("Arial", 9)).pack(side="left", padx=5)
-        self.entry_pago_cup_adicional = tk.Entry(subframe_efectivo, textvariable=self.pago_cup_adicional_var, width=10)
+        subframe_efectivo = ttk.Frame(self.frame_adicional_divisa)
+        ttk.Label(subframe_efectivo, text="Pago en CUP adicional (efectivo):").pack(side="left", padx=5)
+        self.entry_pago_cup_adicional = ttk.Entry(subframe_efectivo, textvariable=self.pago_cup_adicional_var, width=10)
         self.entry_pago_cup_adicional.pack(side="left", padx=5)
         self.entry_pago_cup_adicional.bind("<KeyRelease>", self.calcular_vuelto)
         self.entry_pago_cup_adicional.config(state="disabled")
         subframe_efectivo.pack(side="top", anchor="w", padx=5, pady=2)
 
-        subframe_transferencia = tk.Frame(self.frame_adicional_divisa)
-        tk.Label(subframe_transferencia, text="Pago en CUP adicional (transferencia):", font=("Arial", 9)).pack(side="left", padx=5)
-        self.entry_pago_transferencia_adicional = tk.Entry(subframe_transferencia, textvariable=self.pago_transferencia_adicional_var, width=10)
+        subframe_transferencia = ttk.Frame(self.frame_adicional_divisa)
+        ttk.Label(subframe_transferencia, text="Pago en CUP adicional (transferencia):").pack(side="left", padx=5)
+        self.entry_pago_transferencia_adicional = ttk.Entry(subframe_transferencia, textvariable=self.pago_transferencia_adicional_var, width=10)
         self.entry_pago_transferencia_adicional.pack(side="left", padx=5)
         self.entry_pago_transferencia_adicional.bind("<KeyRelease>", self.calcular_vuelto)
         self.entry_pago_transferencia_adicional.config(state="disabled")
@@ -463,27 +468,25 @@ class PanelVentasMixin:
 
         self.frame_adicional_divisa.pack_forget()
 
-        frame_vuelto = tk.Frame(frame_pago)
+        frame_vuelto = ttk.Frame(frame_pago)
         frame_vuelto.grid(row=4, column=0, columnspan=4, sticky="ew", pady=(18, 0))
 
-        tk.Button(frame_vuelto, text="Calcular Vuelto", command=self.calcular_vuelto, bg="#9C27B0", fg="white", width=14).grid(row=0, column=0, rowspan=2, padx=(5, 12), sticky="n")
-
-        bloque_vuelto = tk.Frame(frame_vuelto)
-        bloque_vuelto.grid(row=0, column=1, columnspan=3, sticky="w")
-        tk.Label(bloque_vuelto, text="Vuelto:", font=("Arial", 10)).pack(side="left", padx=(0, 5))
-        self.label_vuelto_valor = tk.Label(bloque_vuelto, textvariable=self.vuelto_var, font=("Arial", 12, "bold"), fg="green")
+        bloque_vuelto = ttk.Frame(frame_vuelto)
+        bloque_vuelto.pack(side="top", anchor="w")
+        ttk.Button(bloque_vuelto, text="Vuelto", command=self.calcular_vuelto, style="Purple.TButton").pack(side="left", padx=(0, 10))
+        self.label_vuelto_valor = ttk.Label(bloque_vuelto, textvariable=self.vuelto_var, style="Titulo.TLabel", foreground="#2E7D32")
         self.label_vuelto_valor.pack(side="left", padx=5)
-        self.label_vuelto_moneda = tk.Label(bloque_vuelto, text="CUP", font=("Arial", 10), fg="green")
+        self.label_vuelto_moneda = ttk.Label(bloque_vuelto, text="CUP", foreground="#2E7D32")
         self.label_vuelto_moneda.pack(side="left", padx=5)
 
-        tk.Label(frame_vuelto, text="Vuelto en moneda de pago:", font=("Arial", 9)).grid(row=1, column=1, padx=5, sticky="e")
-        self.entry_vuelto_moneda = tk.Entry(frame_vuelto, textvariable=self.vuelto_moneda_var, width=10)
-        self.entry_vuelto_moneda.grid(row=1, column=2, padx=5, sticky="w")
+        self.frame_vuelto_divisa = ttk.Frame(frame_vuelto)
+        self.label_vuelto_divisa_texto = ttk.Label(self.frame_vuelto_divisa, text="Vuelto en moneda de pago:")
+        self.label_vuelto_divisa_texto.pack(side="left", padx=(0, 8))
+        self.entry_vuelto_moneda = ttk.Entry(self.frame_vuelto_divisa, textvariable=self.vuelto_moneda_var, width=10)
         self.entry_vuelto_moneda.bind("<KeyRelease>", self.calcular_vuelto_mixto)
-        self.entry_vuelto_moneda.config(state="disabled")
 
-        frame_botones_rapidos = tk.Frame(frame_vuelto)
-        frame_botones_rapidos.grid(row=1, column=3, padx=5, sticky="w")
+        frame_botones_rapidos = ttk.Frame(self.frame_vuelto_divisa)
+        frame_botones_rapidos.pack(side="left")
         def agregar_vuelto_rapido(cantidad):
             actual = self.vuelto_moneda_var.get().strip()
             if actual:
@@ -496,23 +499,27 @@ class PanelVentasMixin:
             self.vuelto_moneda_var.set(f"{nuevo:.2f}")
             self.calcular_vuelto_mixto()
         for valor in [1, 5, 10, 20, 50]:
-            tk.Button(frame_botones_rapidos, text=f"+{valor}", command=lambda v=valor: agregar_vuelto_rapido(v), bg="#E0E0E0", fg="black", font=("Arial", 8, "bold"), width=4, relief="raised", bd=2).pack(side="left", padx=1)
-        
-        self.label_resto_cup = tk.Label(frame_vuelto, text="", font=("Arial", 9), fg="green")
-        self.label_resto_cup.grid(row=2, column=0, columnspan=4, padx=5, sticky="w")
+            ttk.Button(frame_botones_rapidos, text=f"+{valor}", command=lambda v=valor: agregar_vuelto_rapido(v), style="Quick.TButton", width=4).pack(side="left", padx=1)
+        self.frame_vuelto_divisa.pack(side="top", anchor="w", pady=(10, 0))
+        self.frame_vuelto_divisa.pack_forget()
 
-        frame_finales = tk.Frame(frame_acciones)
+        self.label_resto_cup = ttk.Label(frame_vuelto, text="", foreground="#2E7D32")
+        self.label_resto_cup.pack(side="top", anchor="w", pady=(8, 0))
+
+        frame_finales = ttk.Frame(frame_acciones)
         frame_finales.grid(row=3, column=0, pady=5)
-        tk.Button(frame_finales, text="Finalizar Venta", command=self.finalizar_venta, bg="#4CAF50", fg="white", width=18).pack(side="left", padx=10)
-        tk.Button(frame_finales, text="Cancelar Venta", command=self.cancelar_venta, bg="#f44336", fg="white", width=18).pack(side="left", padx=10)
+        ttk.Button(frame_finales, text="Finalizar Venta", command=self.finalizar_venta, style="Success.TButton", width=18).pack(side="left", padx=10)
+        ttk.Button(frame_finales, text="Cancelar Venta", command=self.cancelar_venta, style="Danger.TButton", width=18).pack(side="left", padx=10)
 
         self.frame_transferencia.pack(fill="x")
         self.frame_adicional_divisa.pack_forget()
 
     def toggle_observaciones_deuda(self):
         if self.deuda_var.get() == 1:
+            self.frame_obs_deuda.grid()
             self.entry_obs_deuda.config(state="normal")
         else:
+            self.frame_obs_deuda.grid_remove()
             self.entry_obs_deuda.config(state="disabled")
             self.observaciones_deuda_var.set("")
 
@@ -552,32 +559,33 @@ class PanelVentasMixin:
 
     def pedir_cantidad_universal(self, producto_id, nombre, precio, stock, unidad, tipo, indice_carrito=None):
         ventana = tk.Toplevel(self.root)
+        ventana.configure(background=self.color_fondo)
         ventana.title("Ingresar Cantidad" if tipo == "peso" else "Ingresar Cantidad")
         ventana.geometry("420x340")
         ventana.resizable(False, False)
         ventana.transient(self.root)
         ventana.grab_set()
 
-        tk.Label(ventana, text="Ingresar Cantidad", font=("Arial", 14, "bold")).pack(pady=10)
-        tk.Label(ventana, text=f"Producto: {nombre}").pack(pady=2)
-        tk.Label(ventana, text=f"Tipo: {'Peso' if tipo=='peso' else 'Unidad'} - Unidad: {unidad}").pack(pady=2)
-        tk.Label(ventana, text=f"Stock disponible: {stock:.2f} {unidad}", fg="blue").pack(pady=2)
-        tk.Label(ventana, text=f"Precio: {precio:.2f} CUP por {unidad}", fg="green").pack(pady=2)
+        ttk.Label(ventana, text="Ingresar Cantidad", style="Titulo.TLabel").pack(pady=10)
+        ttk.Label(ventana, text=f"Producto: {nombre}").pack(pady=2)
+        ttk.Label(ventana, text=f"Tipo: {'Peso' if tipo=='peso' else 'Unidad'} - Unidad: {unidad}").pack(pady=2)
+        ttk.Label(ventana, text=f"Stock disponible: {stock:.2f} {unidad}", foreground="#1976D2").pack(pady=2)
+        ttk.Label(ventana, text=f"Precio: {precio:.2f} CUP por {unidad}", foreground="#2E7D32").pack(pady=2)
         if indice_carrito is not None:
             actual = self.carrito[indice_carrito]["cantidad"]
-            tk.Label(ventana, text=f"Cantidad actual: {actual:.2f} {unidad}", fg="purple").pack(pady=2)
-        tk.Frame(ventana, height=2, bg="gray").pack(fill="x", pady=10)
+            ttk.Label(ventana, text=f"Cantidad actual: {actual:.2f} {unidad}", foreground="#7B1FA2").pack(pady=2)
+        ttk.Separator(ventana, orient="horizontal").pack(fill="x", pady=10, padx=20)
 
-        frame_cantidad = tk.Frame(ventana)
+        frame_cantidad = ttk.Frame(ventana)
         frame_cantidad.pack(pady=10)
-        tk.Label(frame_cantidad, text=f"Cantidad ({unidad}):", font=("Arial", 10)).pack(side="left", padx=5)
+        ttk.Label(frame_cantidad, text=f"Cantidad ({unidad}):").pack(side="left", padx=5)
         cantidad_var = tk.StringVar(value="1.0")
-        entry_cantidad = tk.Entry(frame_cantidad, textvariable=cantidad_var, width=15, font=("Arial", 12))
+        entry_cantidad = ttk.Entry(frame_cantidad, textvariable=cantidad_var, width=15, font=("Segoe UI", 12))
         entry_cantidad.pack(side="left", padx=5)
         entry_cantidad.focus_set()
         entry_cantidad.select_range(0, tk.END)
 
-        subtotal_label = tk.Label(ventana, text="Subtotal: 0.00 CUP", font=("Arial", 12, "bold"), fg="purple")
+        subtotal_label = ttk.Label(ventana, text="Subtotal: 0.00 CUP", style="Titulo.TLabel", foreground="#7B1FA2")
         subtotal_label.pack(pady=5)
 
         def actualizar_subtotal(*args):
@@ -633,11 +641,11 @@ class PanelVentasMixin:
             except ValueError:
                 self.mostrar_mensaje("error", "Error", "Ingresa un número válido")
 
-        frame_botones = tk.Frame(ventana)
+        frame_botones = ttk.Frame(ventana)
         frame_botones.pack(pady=15)
-        btn_aceptar = tk.Button(frame_botones, text="Aceptar", command=aceptar_cantidad, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"), padx=15, pady=8)
+        btn_aceptar = ttk.Button(frame_botones, text="Aceptar", command=aceptar_cantidad, style="Success.TButton")
         btn_aceptar.pack(side="left", padx=10)
-        btn_cancelar = tk.Button(frame_botones, text="Cancelar", command=ventana.destroy, bg="#f44336", fg="white", font=("Arial", 10, "bold"), padx=15, pady=8)
+        btn_cancelar = ttk.Button(frame_botones, text="Cancelar", command=ventana.destroy, style="Danger.TButton")
         btn_cancelar.pack(side="left", padx=10)
         entry_cantidad.bind("<Key-Return>", lambda event: aceptar_cantidad())
 
@@ -692,23 +700,23 @@ class PanelVentasMixin:
             self.vuelto_var.set("0.00")
 
     def crear_formulario_salida(self):
-        self.frame_formulario_salida = tk.LabelFrame(self.frame_contenedor_dinamico, text="Registrar Salida", padx=10, pady=10)
-        tk.Label(self.frame_formulario_salida, text="Producto:", font=("Arial", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.label_salida_producto = tk.Label(self.frame_formulario_salida, text="(Ninguno seleccionado)", fg="gray", font=("Arial", 10))
+        self.frame_formulario_salida = ttk.LabelFrame(self.frame_contenedor_dinamico, text="Registrar Salida", padding=10)
+        ttk.Label(self.frame_formulario_salida, text="Producto:", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.label_salida_producto = ttk.Label(self.frame_formulario_salida, text="(Ninguno seleccionado)", foreground="gray")
         self.label_salida_producto.grid(row=0, column=1, columnspan=3, padx=5, pady=5, sticky="w")
-        tk.Label(self.frame_formulario_salida, text="Precio Costo (CUP):", font=("Arial", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.label_salida_precio = tk.Label(self.frame_formulario_salida, text="0.00", fg="blue", font=("Arial", 10))
+        ttk.Label(self.frame_formulario_salida, text="Precio Costo (CUP):", font=("Segoe UI", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.label_salida_precio = ttk.Label(self.frame_formulario_salida, text="0.00", foreground="#1976D2")
         self.label_salida_precio.grid(row=1, column=1, padx=5, pady=5, sticky="w")
-        tk.Label(self.frame_formulario_salida, text="Cantidad:", font=("Arial", 10, "bold")).grid(row=1, column=2, padx=5, pady=5, sticky="w")
-        self.entry_salida_cantidad = tk.Entry(self.frame_formulario_salida, textvariable=self.salida_cantidad, width=12)
+        ttk.Label(self.frame_formulario_salida, text="Cantidad:", font=("Segoe UI", 10, "bold")).grid(row=1, column=2, padx=5, pady=5, sticky="w")
+        self.entry_salida_cantidad = ttk.Entry(self.frame_formulario_salida, textvariable=self.salida_cantidad, width=12)
         self.entry_salida_cantidad.grid(row=1, column=3, padx=5, pady=5, sticky="w")
-        tk.Label(self.frame_formulario_salida, text="Motivo:", font=("Arial", 10, "bold")).grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        self.entry_salida_motivo = tk.Entry(self.frame_formulario_salida, textvariable=self.salida_motivo, width=40)
+        ttk.Label(self.frame_formulario_salida, text="Motivo:", font=("Segoe UI", 10, "bold")).grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.entry_salida_motivo = ttk.Entry(self.frame_formulario_salida, textvariable=self.salida_motivo, width=40)
         self.entry_salida_motivo.grid(row=2, column=1, columnspan=3, padx=5, pady=5, sticky="w")
-        frame_botones_salida = tk.Frame(self.frame_formulario_salida)
+        frame_botones_salida = ttk.Frame(self.frame_formulario_salida)
         frame_botones_salida.grid(row=3, column=0, columnspan=4, pady=10)
-        tk.Button(frame_botones_salida, text="Guardar Salida", command=self.guardar_salida, bg="#4CAF50", fg="white", width=15).pack(side="left", padx=5)
-        tk.Button(frame_botones_salida, text="Cancelar", command=self.ocultar_formulario_salida, bg="#f44336", fg="white", width=15).pack(side="left", padx=5)
+        ttk.Button(frame_botones_salida, text="Guardar Salida", command=self.guardar_salida, style="Success.TButton", width=15).pack(side="left", padx=5)
+        ttk.Button(frame_botones_salida, text="Cancelar", command=self.ocultar_formulario_salida, style="Danger.TButton", width=15).pack(side="left", padx=5)
     def mostrar_formulario_salida(self):
         seleccion = self.tabla_resultados.selection()
         if not seleccion:
@@ -788,23 +796,23 @@ class PanelVentasMixin:
             self.mostrar_mensaje("error", "Error", f"Error inesperado: {str(e)}")
 
     def crear_formulario_entrada_efectivo(self):
-        self.frame_formulario_entrada_efectivo = tk.LabelFrame(self.frame_contenedor_dinamico, text="Entrada de efectivo a caja", padx=10, pady=10)
-        tk.Label(self.frame_formulario_entrada_efectivo, text="Moneda:", font=("Arial", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        frame_moneda = tk.Frame(self.frame_formulario_entrada_efectivo)
+        self.frame_formulario_entrada_efectivo = ttk.LabelFrame(self.frame_contenedor_dinamico, text="Entrada de efectivo a caja", padding=10)
+        ttk.Label(self.frame_formulario_entrada_efectivo, text="Moneda:", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        frame_moneda = ttk.Frame(self.frame_formulario_entrada_efectivo)
         frame_moneda.grid(row=0, column=1, padx=5, pady=5, sticky="w")
-        tk.Radiobutton(frame_moneda, text="USD", variable=self.efectivo_moneda, value="USD").pack(side="left", padx=5)
-        tk.Radiobutton(frame_moneda, text="EUR", variable=self.efectivo_moneda, value="EUR").pack(side="left", padx=5)
-        tk.Radiobutton(frame_moneda, text="CUP", variable=self.efectivo_moneda, value="CUP").pack(side="left", padx=5)
-        tk.Label(self.frame_formulario_entrada_efectivo, text="Monto:", font=("Arial", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.entry_efectivo_monto = tk.Entry(self.frame_formulario_entrada_efectivo, textvariable=self.efectivo_monto, width=15, font=("Arial", 12))
+        ttk.Radiobutton(frame_moneda, text="USD", variable=self.efectivo_moneda, value="USD").pack(side="left", padx=5)
+        ttk.Radiobutton(frame_moneda, text="EUR", variable=self.efectivo_moneda, value="EUR").pack(side="left", padx=5)
+        ttk.Radiobutton(frame_moneda, text="CUP", variable=self.efectivo_moneda, value="CUP").pack(side="left", padx=5)
+        ttk.Label(self.frame_formulario_entrada_efectivo, text="Monto:", font=("Segoe UI", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.entry_efectivo_monto = ttk.Entry(self.frame_formulario_entrada_efectivo, textvariable=self.efectivo_monto, width=15, font=("Segoe UI", 12))
         self.entry_efectivo_monto.grid(row=1, column=1, padx=5, pady=5, sticky="w")
-        tk.Label(self.frame_formulario_entrada_efectivo, text="Descripción:", font=("Arial", 10, "bold")).grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        self.entry_efectivo_desc = tk.Entry(self.frame_formulario_entrada_efectivo, textvariable=self.efectivo_descripcion, width=40)
+        ttk.Label(self.frame_formulario_entrada_efectivo, text="Descripción:", font=("Segoe UI", 10, "bold")).grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.entry_efectivo_desc = ttk.Entry(self.frame_formulario_entrada_efectivo, textvariable=self.efectivo_descripcion, width=40)
         self.entry_efectivo_desc.grid(row=2, column=1, padx=5, pady=5, sticky="w")
-        frame_botones_entrada = tk.Frame(self.frame_formulario_entrada_efectivo)
+        frame_botones_entrada = ttk.Frame(self.frame_formulario_entrada_efectivo)
         frame_botones_entrada.grid(row=3, column=0, columnspan=2, pady=10)
-        tk.Button(frame_botones_entrada, text="Guardar", command=self.guardar_entrada_efectivo, bg="#4CAF50", fg="white", width=12).pack(side="left", padx=5)
-        tk.Button(frame_botones_entrada, text="Cancelar", command=self.ocultar_formulario_entrada_efectivo, bg="#f44336", fg="white", width=12).pack(side="left", padx=5)
+        ttk.Button(frame_botones_entrada, text="Guardar", command=self.guardar_entrada_efectivo, style="Success.TButton", width=12).pack(side="left", padx=5)
+        ttk.Button(frame_botones_entrada, text="Cancelar", command=self.ocultar_formulario_entrada_efectivo, style="Danger.TButton", width=12).pack(side="left", padx=5)
         self.frame_formulario_entrada_efectivo.pack_forget()
     def mostrar_formulario_entrada_efectivo(self):
         self.ocultar_modulos_dinamicos()
@@ -846,23 +854,23 @@ class PanelVentasMixin:
             self.mostrar_mensaje("error", "Error", mensaje)
 
     def crear_formulario_salida_efectivo(self):
-        self.frame_formulario_salida_efectivo = tk.LabelFrame(self.frame_contenedor_dinamico, text="Salida de efectivo de caja", padx=10, pady=10)
-        tk.Label(self.frame_formulario_salida_efectivo, text="Moneda:", font=("Arial", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        frame_moneda = tk.Frame(self.frame_formulario_salida_efectivo)
+        self.frame_formulario_salida_efectivo = ttk.LabelFrame(self.frame_contenedor_dinamico, text="Salida de efectivo de caja", padding=10)
+        ttk.Label(self.frame_formulario_salida_efectivo, text="Moneda:", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        frame_moneda = ttk.Frame(self.frame_formulario_salida_efectivo)
         frame_moneda.grid(row=0, column=1, padx=5, pady=5, sticky="w")
-        tk.Radiobutton(frame_moneda, text="USD", variable=self.salida_efectivo_moneda, value="USD").pack(side="left", padx=5)
-        tk.Radiobutton(frame_moneda, text="EUR", variable=self.salida_efectivo_moneda, value="EUR").pack(side="left", padx=5)
-        tk.Radiobutton(frame_moneda, text="CUP", variable=self.salida_efectivo_moneda, value="CUP").pack(side="left", padx=5)
-        tk.Label(self.frame_formulario_salida_efectivo, text="Monto:", font=("Arial", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.entry_salida_efectivo_monto = tk.Entry(self.frame_formulario_salida_efectivo, textvariable=self.salida_efectivo_monto, width=15, font=("Arial", 12))
+        ttk.Radiobutton(frame_moneda, text="USD", variable=self.salida_efectivo_moneda, value="USD").pack(side="left", padx=5)
+        ttk.Radiobutton(frame_moneda, text="EUR", variable=self.salida_efectivo_moneda, value="EUR").pack(side="left", padx=5)
+        ttk.Radiobutton(frame_moneda, text="CUP", variable=self.salida_efectivo_moneda, value="CUP").pack(side="left", padx=5)
+        ttk.Label(self.frame_formulario_salida_efectivo, text="Monto:", font=("Segoe UI", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.entry_salida_efectivo_monto = ttk.Entry(self.frame_formulario_salida_efectivo, textvariable=self.salida_efectivo_monto, width=15, font=("Segoe UI", 12))
         self.entry_salida_efectivo_monto.grid(row=1, column=1, padx=5, pady=5, sticky="w")
-        tk.Label(self.frame_formulario_salida_efectivo, text="Descripción:", font=("Arial", 10, "bold")).grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        self.entry_salida_efectivo_desc = tk.Entry(self.frame_formulario_salida_efectivo, textvariable=self.salida_efectivo_descripcion, width=40)
+        ttk.Label(self.frame_formulario_salida_efectivo, text="Descripción:", font=("Segoe UI", 10, "bold")).grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.entry_salida_efectivo_desc = ttk.Entry(self.frame_formulario_salida_efectivo, textvariable=self.salida_efectivo_descripcion, width=40)
         self.entry_salida_efectivo_desc.grid(row=2, column=1, padx=5, pady=5, sticky="w")
-        frame_botones_salida_efectivo = tk.Frame(self.frame_formulario_salida_efectivo)
+        frame_botones_salida_efectivo = ttk.Frame(self.frame_formulario_salida_efectivo)
         frame_botones_salida_efectivo.grid(row=3, column=0, columnspan=2, pady=10)
-        tk.Button(frame_botones_salida_efectivo, text="Guardar", command=self.guardar_salida_efectivo, bg="#4CAF50", fg="white", width=12).pack(side="left", padx=5)
-        tk.Button(frame_botones_salida_efectivo, text="Cancelar", command=self.ocultar_formulario_salida_efectivo, bg="#f44336", fg="white", width=12).pack(side="left", padx=5)
+        ttk.Button(frame_botones_salida_efectivo, text="Guardar", command=self.guardar_salida_efectivo, style="Success.TButton", width=12).pack(side="left", padx=5)
+        ttk.Button(frame_botones_salida_efectivo, text="Cancelar", command=self.ocultar_formulario_salida_efectivo, style="Danger.TButton", width=12).pack(side="left", padx=5)
         self.frame_formulario_salida_efectivo.pack_forget()
     def mostrar_formulario_salida_efectivo(self):
         self.ocultar_modulos_dinamicos()
@@ -904,23 +912,23 @@ class PanelVentasMixin:
             self.mostrar_mensaje("error", "Error", mensaje)
 
     def crear_formulario_merma(self):
-        self.frame_formulario_merma = tk.LabelFrame(self.frame_contenedor_dinamico, text="Registrar Merma", padx=10, pady=10)
-        tk.Label(self.frame_formulario_merma, text="Producto:", font=("Arial", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.label_merma_producto = tk.Label(self.frame_formulario_merma, text="(Ninguno seleccionado)", fg="gray", font=("Arial", 10))
+        self.frame_formulario_merma = ttk.LabelFrame(self.frame_contenedor_dinamico, text="Registrar Merma", padding=10)
+        ttk.Label(self.frame_formulario_merma, text="Producto:", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.label_merma_producto = ttk.Label(self.frame_formulario_merma, text="(Ninguno seleccionado)", foreground="gray")
         self.label_merma_producto.grid(row=0, column=1, columnspan=3, padx=5, pady=5, sticky="w")
-        tk.Label(self.frame_formulario_merma, text="Stock actual:", font=("Arial", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.label_merma_stock = tk.Label(self.frame_formulario_merma, text="0", fg="blue", font=("Arial", 10))
+        ttk.Label(self.frame_formulario_merma, text="Stock actual:", font=("Segoe UI", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.label_merma_stock = ttk.Label(self.frame_formulario_merma, text="0", foreground="#1976D2")
         self.label_merma_stock.grid(row=1, column=1, padx=5, pady=5, sticky="w")
-        tk.Label(self.frame_formulario_merma, text="Cantidad a mermar:", font=("Arial", 10, "bold")).grid(row=1, column=2, padx=5, pady=5, sticky="w")
-        self.entry_merma_cantidad = tk.Entry(self.frame_formulario_merma, textvariable=self.merma_cantidad, width=12)
+        ttk.Label(self.frame_formulario_merma, text="Cantidad a mermar:", font=("Segoe UI", 10, "bold")).grid(row=1, column=2, padx=5, pady=5, sticky="w")
+        self.entry_merma_cantidad = ttk.Entry(self.frame_formulario_merma, textvariable=self.merma_cantidad, width=12)
         self.entry_merma_cantidad.grid(row=1, column=3, padx=5, pady=5, sticky="w")
-        tk.Label(self.frame_formulario_merma, text="Motivo:", font=("Arial", 10, "bold")).grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        self.entry_merma_motivo = tk.Entry(self.frame_formulario_merma, textvariable=self.merma_motivo, width=40)
+        ttk.Label(self.frame_formulario_merma, text="Motivo:", font=("Segoe UI", 10, "bold")).grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.entry_merma_motivo = ttk.Entry(self.frame_formulario_merma, textvariable=self.merma_motivo, width=40)
         self.entry_merma_motivo.grid(row=2, column=1, columnspan=3, padx=5, pady=5, sticky="w")
-        frame_botones_merma = tk.Frame(self.frame_formulario_merma)
+        frame_botones_merma = ttk.Frame(self.frame_formulario_merma)
         frame_botones_merma.grid(row=3, column=0, columnspan=4, pady=10)
-        tk.Button(frame_botones_merma, text="Guardar Merma", command=self.guardar_merma, bg="#4CAF50", fg="white", width=15).pack(side="left", padx=5)
-        tk.Button(frame_botones_merma, text="Cancelar", command=self.ocultar_formulario_merma, bg="#f44336", fg="white", width=15).pack(side="left", padx=5)
+        ttk.Button(frame_botones_merma, text="Guardar Merma", command=self.guardar_merma, style="Success.TButton", width=15).pack(side="left", padx=5)
+        ttk.Button(frame_botones_merma, text="Cancelar", command=self.ocultar_formulario_merma, style="Danger.TButton", width=15).pack(side="left", padx=5)
         self.frame_formulario_merma.pack_forget()
     def mostrar_formulario_merma(self):
         seleccion = self.tabla_resultados.selection()

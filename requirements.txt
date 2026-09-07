@@ -1,0 +1,3 @@
+ttkbootstrap>=2.2.2
+pandas
+openpyxl

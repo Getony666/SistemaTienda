@@ -5,13 +5,13 @@
 El código vive en el paquete lddl/ (ver lddl/__init__.py para el mapa de módulos).
 """
 
-import tkinter as tk
+import ttkbootstrap as tb
 
 from lddl.ui import VentanaVentas
 
 
 def main():
-    root = tk.Tk()
+    root = tb.Window(themename="flatly")
     VentanaVentas(root)
     root.mainloop()
 

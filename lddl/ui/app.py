@@ -14,6 +14,7 @@ from ..caja import cargar_fondo_por_fecha
 from ..esquema import verificar_y_crear_columnas
 from .cobro import CobroMixin
 from .dialogo_deuda import DialogoDeudaMixin
+from .estilos import configurar_estilos
 from .panel_cambio import PanelCambioMixin
 from .panel_corte import PanelCorteMixin
 from .panel_historial import PanelHistorialMixin
@@ -27,6 +28,9 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
     def __init__(self, master):
         self.root = master
         self.root.title("La Despensa de Leslia - Sistema Integrado")
+        self.style = ttk.Style(self.root)
+        configurar_estilos(self.style)
+        self.color_fondo = self.style.lookup("TFrame", "background")
         try:
             self.root.state('zoomed')
         except:
@@ -147,14 +151,14 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=0)
         self.root.grid_rowconfigure(1, weight=0)
-        self.canvas = tk.Canvas(self.root)
+        self.canvas = tk.Canvas(self.root, background=self.color_fondo, highlightthickness=0)
         self.canvas.grid(row=0, column=0, sticky="nsew")
         self.scrollbar_y = ttk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
         self.scrollbar_y.grid(row=0, column=1, sticky="ns")
         self.scrollbar_x = ttk.Scrollbar(self.root, orient="horizontal", command=self.canvas.xview)
         self.scrollbar_x.grid(row=1, column=0, sticky="ew")
         self.canvas.configure(yscrollcommand=self.scrollbar_y.set, xscrollcommand=self.scrollbar_x.set)
-        self.scrollable_frame = tk.Frame(self.canvas)
+        self.scrollable_frame = ttk.Frame(self.canvas)
         self.scrollable_frame.grid_columnconfigure(0, weight=1)
         self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         def _configure_canvas(event):
@@ -171,16 +175,16 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
         self.canvas.xview_scroll(int(-1*(event.delta/120)), "units")
 
     def crear_botones_principales(self):
-        self.frame_botones_principales = tk.Frame(self.scrollable_frame)
-        self.frame_botones_principales.pack(fill="x", padx=10, pady=5)
-        self.btn_ventas = tk.Button(self.frame_botones_principales, text="Ventas", command=self.toggle_panel_ventas, bg="#2196F3", fg="white", width=14)
-        self.btn_ventas.pack(side="left", padx=5)
-        self.btn_historial = tk.Button(self.frame_botones_principales, text="Historial", command=self.toggle_panel_historial, bg="#FF9800", fg="white", width=14)
-        self.btn_historial.pack(side="left", padx=5)
-        self.btn_cambio = tk.Button(self.frame_botones_principales, text="Cambio de Divisa", command=self.toggle_panel_cambio, bg="#9C27B0", fg="white", width=16)
-        self.btn_cambio.pack(side="left", padx=5)
-        self.btn_corte = tk.Button(self.frame_botones_principales, text="Corte de Caja", command=self.toggle_panel_corte, bg="#795548", fg="white", width=14)
-        self.btn_corte.pack(side="left", padx=5)
+        self.frame_botones_principales = ttk.Frame(self.scrollable_frame, padding=(16, 12), style="NavBar.TFrame")
+        self.frame_botones_principales.pack(fill="x")
+        self.btn_ventas = ttk.Button(self.frame_botones_principales, text="🛒 Ventas", command=self.toggle_panel_ventas, style="NavActivo.TButton")
+        self.btn_ventas.pack(side="left", padx=(0, 8))
+        self.btn_historial = ttk.Button(self.frame_botones_principales, text="🕒 Historial", command=self.toggle_panel_historial, style="NavInactivo.TButton")
+        self.btn_historial.pack(side="left", padx=8)
+        self.btn_cambio = ttk.Button(self.frame_botones_principales, text="💱 Cambio de Divisa", command=self.toggle_panel_cambio, style="NavInactivo.TButton")
+        self.btn_cambio.pack(side="left", padx=8)
+        self.btn_corte = ttk.Button(self.frame_botones_principales, text="🧮 Corte de Caja", command=self.toggle_panel_corte, style="NavInactivo.TButton")
+        self.btn_corte.pack(side="left", padx=8)
 
     def toggle_panel_ventas(self):
         if self.panel_ventas_visible:
@@ -201,17 +205,17 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
             self.cargar_productos()
             self.actualizar_moneda_pago()
             self.panel_ventas_visible = True
-            self.btn_ventas.config(bg="#1565C0")
-            self.btn_historial.config(bg="#FF9800")
-            self.btn_cambio.config(bg="#9C27B0")
-            self.btn_corte.config(bg="#795548")
+            self.btn_ventas.configure(style="NavActivo.TButton")
+            self.btn_historial.configure(style="NavInactivo.TButton")
+            self.btn_cambio.configure(style="NavInactivo.TButton")
+            self.btn_corte.configure(style="NavInactivo.TButton")
     def ocultar_panel_ventas(self):
         if self.panel_ventas_visible:
             self.frame_contenido_ventas.pack_forget()
             self.ocultar_sugerencias()
             self.ocultar_modulos_dinamicos()
             self.panel_ventas_visible = False
-            self.btn_ventas.config(bg="#2196F3")
+            self.btn_ventas.configure(style="NavInactivo.TButton")
 
     def toggle_panel_historial(self):
         if self.panel_historial_visible:
@@ -229,15 +233,15 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
             self.frame_contenido_historial.pack(fill="both", expand=True, padx=0, pady=0)
             self.cargar_ventas()
             self.panel_historial_visible = True
-            self.btn_historial.config(bg="#E65100")
-            self.btn_ventas.config(bg="#2196F3")
-            self.btn_cambio.config(bg="#9C27B0")
-            self.btn_corte.config(bg="#795548")
+            self.btn_historial.configure(style="NavActivo.TButton")
+            self.btn_ventas.configure(style="NavInactivo.TButton")
+            self.btn_cambio.configure(style="NavInactivo.TButton")
+            self.btn_corte.configure(style="NavInactivo.TButton")
     def ocultar_panel_historial(self):
         if self.panel_historial_visible:
             self.frame_contenido_historial.pack_forget()
             self.panel_historial_visible = False
-            self.btn_historial.config(bg="#FF9800")
+            self.btn_historial.configure(style="NavInactivo.TButton")
 
     def toggle_panel_cambio(self):
         if self.panel_cambio_visible:
@@ -255,15 +259,15 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
             self.frame_contenido_cambio.pack(fill="both", expand=True, padx=0, pady=0)
             self.actualizar_saldo_cambio()
             self.panel_cambio_visible = True
-            self.btn_cambio.config(bg="#6A1B9A")
-            self.btn_ventas.config(bg="#2196F3")
-            self.btn_historial.config(bg="#FF9800")
-            self.btn_corte.config(bg="#795548")
+            self.btn_cambio.configure(style="NavActivo.TButton")
+            self.btn_ventas.configure(style="NavInactivo.TButton")
+            self.btn_historial.configure(style="NavInactivo.TButton")
+            self.btn_corte.configure(style="NavInactivo.TButton")
     def ocultar_panel_cambio(self):
         if self.panel_cambio_visible:
             self.frame_contenido_cambio.pack_forget()
             self.panel_cambio_visible = False
-            self.btn_cambio.config(bg="#9C27B0")
+            self.btn_cambio.configure(style="NavInactivo.TButton")
 
     def toggle_panel_corte(self):
         if self.panel_corte_visible:
@@ -281,13 +285,13 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
             self.frame_contenido_corte.pack(fill="both", expand=True, padx=0, pady=0)
             self.cargar_resumen_corte()
             self.panel_corte_visible = True
-            self.btn_corte.config(bg="#4E342E")
-            self.btn_ventas.config(bg="#2196F3")
-            self.btn_historial.config(bg="#FF9800")
-            self.btn_cambio.config(bg="#9C27B0")
+            self.btn_corte.configure(style="NavActivo.TButton")
+            self.btn_ventas.configure(style="NavInactivo.TButton")
+            self.btn_historial.configure(style="NavInactivo.TButton")
+            self.btn_cambio.configure(style="NavInactivo.TButton")
     def ocultar_panel_corte(self):
         if self.panel_corte_visible:
             self.frame_contenido_corte.pack_forget()
             self.panel_corte_visible = False
-            self.btn_corte.config(bg="#795548")
+            self.btn_corte.configure(style="NavInactivo.TButton")
 
