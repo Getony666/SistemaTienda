@@ -8,6 +8,7 @@ from tkinter import ttk
 from ..caja import obtener_efectivo_disponible_cup
 from ..rutas import consulta
 from ..ventas_datos import registrar_cobro_deuda_en_db
+from .estilos import COLOR_PASTILLA_ON, COLOR_TARJETA, COLOR_TOTAL
 
 
 class DialogoDeudaMixin:
@@ -77,6 +78,7 @@ class DialogoDeudaMixin:
         ventana.resizable(False, False)
         ventana.transient(self.root)
         ventana.grab_set()
+        ventana.configure(background=COLOR_TARJETA)
 
         moneda_pago = tk.StringVar(value="CUP")
         tasa_var = tk.StringVar(value="1.00")
@@ -426,104 +428,104 @@ class DialogoDeudaMixin:
             ventana.destroy()
 
         # ============ INTERFAZ GRÁFICA ============
-        main_frame = tk.Frame(ventana, padx=20, pady=20)
+        main_frame = ttk.Frame(ventana, padding=18)
         main_frame.pack(fill="both", expand=True)
 
-        tk.Label(main_frame, text=f"Deuda #{venta_id}", font=("Arial", 14, "bold")).pack(pady=5)
-        tk.Label(main_frame, text=f"Total: {total:.2f} CUP", font=("Arial", 10)).pack(anchor="w", pady=2)
-        tk.Label(main_frame, text=f"Saldo pendiente: {saldo_pendiente:.2f} CUP", font=("Arial", 10, "bold"), fg="blue").pack(anchor="w", pady=2)
+        ttk.Label(main_frame, text=f"Deuda #{venta_id}", style="Titulo.TLabel").pack(pady=(0, 8))
+        ttk.Label(main_frame, text=f"Total: {total:.2f} CUP").pack(anchor="w", pady=2)
+        ttk.Label(main_frame, text=f"Saldo pendiente: {saldo_pendiente:.2f} CUP", font=("Segoe UI", 9, "bold"), foreground=COLOR_TOTAL).pack(anchor="w", pady=2)
         
         if es_deuda_del_dia:
-            tk.Label(main_frame, text="Deuda del día actual", font=("Arial", 9), fg="green").pack(anchor="w", pady=2)
+            ttk.Label(main_frame, text="Deuda del día actual", foreground="#2E9E6B").pack(anchor="w", pady=2)
         else:
-            tk.Label(main_frame, text="Deuda de días anteriores", font=("Arial", 9), fg="orange").pack(anchor="w", pady=2)
+            ttk.Label(main_frame, text="Deuda de días anteriores", foreground=COLOR_PASTILLA_ON).pack(anchor="w", pady=2)
         
-        tk.Frame(main_frame, height=2, bg="gray").pack(fill="x", pady=10)
+        ttk.Separator(main_frame, orient="horizontal").pack(fill="x", pady=10)
 
         # Moneda y Tasa
-        frame_moneda = tk.Frame(main_frame)
+        frame_moneda = ttk.Frame(main_frame)
         frame_moneda.pack(fill="x", pady=5)
-        tk.Label(frame_moneda, text="Moneda:", font=("Arial", 10, "bold")).pack(side="left", padx=5)
+        ttk.Label(frame_moneda, text="Moneda:", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
         combo_moneda = ttk.Combobox(frame_moneda, textvariable=moneda_pago, values=["CUP", "USD", "EUR"], state="readonly", width=8)
         combo_moneda.pack(side="left", padx=5)
         combo_moneda.bind("<<ComboboxSelected>>", actualizar_moneda)
-        tk.Label(frame_moneda, text="Tasa (CUP):", font=("Arial", 10, "bold")).pack(side="left", padx=5)
-        entry_tasa = tk.Entry(frame_moneda, textvariable=tasa_var, width=10)
+        ttk.Label(frame_moneda, text="Tasa (CUP):", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(14, 6))
+        entry_tasa = ttk.Entry(frame_moneda, textvariable=tasa_var, width=10)
         entry_tasa.pack(side="left", padx=5)
         entry_tasa.config(state="disabled")
 
         # Método de pago
-        frame_metodo = tk.Frame(main_frame)
+        frame_metodo = ttk.Frame(main_frame)
         frame_metodo.pack(fill="x", pady=5)
-        tk.Label(frame_metodo, text="Método de pago:", font=("Arial", 10, "bold")).pack(side="left", padx=5)
-        radio_efectivo = tk.Radiobutton(frame_metodo, text="Efectivo", variable=metodo_pago, value="Efectivo", command=actualizar_metodo)
+        ttk.Label(frame_metodo, text="Método de pago:", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
+        radio_efectivo = ttk.Radiobutton(frame_metodo, text="Efectivo", variable=metodo_pago, value="Efectivo", command=actualizar_metodo)
         radio_efectivo.pack(side="left", padx=5)
-        radio_transferencia = tk.Radiobutton(frame_metodo, text="Transferencia", variable=metodo_pago, value="Transferencia", command=actualizar_metodo)
+        radio_transferencia = ttk.Radiobutton(frame_metodo, text="Transferencia", variable=metodo_pago, value="Transferencia", command=actualizar_metodo)
         radio_transferencia.pack(side="left", padx=5)
-        radio_mixto = tk.Radiobutton(frame_metodo, text="Mixto", variable=metodo_pago, value="Mixto", command=actualizar_metodo)
+        radio_mixto = ttk.Radiobutton(frame_metodo, text="Mixto", variable=metodo_pago, value="Mixto", command=actualizar_metodo)
         radio_mixto.pack(side="left", padx=5)
 
         # Campos de montos
-        frame_montos = tk.Frame(main_frame)
+        frame_montos = ttk.Frame(main_frame)
         frame_montos.pack(fill="x", pady=5)
         
         # Efectivo (USD/EUR o CUP)
-        label_efectivo = tk.Label(frame_montos, text="Efectivo:", font=("Arial", 10))
+        label_efectivo = ttk.Label(frame_montos, text="Efectivo:")
         label_efectivo.pack(side="left", padx=5)
-        entry_efectivo = tk.Entry(frame_montos, textvariable=monto_efectivo, width=12)
+        entry_efectivo = ttk.Entry(frame_montos, textvariable=monto_efectivo, width=12)
         entry_efectivo.pack(side="left", padx=5)
         entry_efectivo.bind("<KeyRelease>", calcular_vuelto)
-        label_moneda_efectivo = tk.Label(frame_montos, text="CUP", font=("Arial", 10))
+        label_moneda_efectivo = ttk.Label(frame_montos, text="CUP")
         label_moneda_efectivo.pack(side="left", padx=2)
 
         # Efectivo CUP (solo para pago en USD/EUR)
-        label_efectivo_cup = tk.Label(frame_montos, text="", font=("Arial", 10))
+        label_efectivo_cup = ttk.Label(frame_montos, text="")
         label_efectivo_cup.pack(side="left", padx=(20, 5))
-        entry_efectivo_cup = tk.Entry(frame_montos, textvariable=monto_efectivo_cup, width=12, state="disabled")
+        entry_efectivo_cup = ttk.Entry(frame_montos, textvariable=monto_efectivo_cup, width=12, state="disabled")
         entry_efectivo_cup.pack(side="left", padx=5)
         entry_efectivo_cup.bind("<KeyRelease>", calcular_vuelto)
-        label_moneda_efectivo_cup = tk.Label(frame_montos, text="CUP", font=("Arial", 10))
+        label_moneda_efectivo_cup = ttk.Label(frame_montos, text="CUP")
         label_moneda_efectivo_cup.pack(side="left", padx=2)
 
         # Transferencia
-        tk.Label(frame_montos, text="Transferencia:", font=("Arial", 10)).pack(side="left", padx=(20, 5))
-        entry_transferencia = tk.Entry(frame_montos, textvariable=monto_transferencia, width=12, state="disabled")
+        ttk.Label(frame_montos, text="Transferencia:").pack(side="left", padx=(20, 5))
+        entry_transferencia = ttk.Entry(frame_montos, textvariable=monto_transferencia, width=12, state="disabled")
         entry_transferencia.pack(side="left", padx=5)
         entry_transferencia.bind("<KeyRelease>", calcular_vuelto)
-        label_moneda_transferencia = tk.Label(frame_montos, text="CUP", font=("Arial", 10))
+        label_moneda_transferencia = ttk.Label(frame_montos, text="CUP")
         label_moneda_transferencia.pack(side="left", padx=2)
 
         # Vuelto
-        frame_vuelto = tk.Frame(main_frame)
+        frame_vuelto = ttk.Frame(main_frame)
         frame_vuelto.pack(fill="x", pady=10)
-        tk.Label(frame_vuelto, text="Vuelto:", font=("Arial", 10, "bold")).pack(side="left", padx=5)
-        label_vuelto = tk.Label(frame_vuelto, text="0.00 CUP", font=("Arial", 12, "bold"), fg="green")
+        ttk.Label(frame_vuelto, text="Vuelto:", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
+        label_vuelto = ttk.Label(frame_vuelto, text="0.00 CUP", style="CifraVerde.TLabel")
         label_vuelto.pack(side="left", padx=5)
-        label_vuelto_moneda = tk.Label(frame_vuelto, text="", font=("Arial", 10))
+        label_vuelto_moneda = ttk.Label(frame_vuelto, text="")
         label_vuelto_moneda.pack(side="left", padx=5)
 
         # Opciones de vuelto en moneda
-        frame_vuelto_opciones = tk.Frame(main_frame)
+        frame_vuelto_opciones = ttk.Frame(main_frame)
         frame_vuelto_opciones.pack(fill="x", pady=5)
-        tk.Label(frame_vuelto_opciones, text="Vuelto en moneda:", font=("Arial", 10)).pack(side="left", padx=5)
-        entry_vuelto_moneda = tk.Entry(frame_vuelto_opciones, textvariable=vuelto_moneda_var, width=10, state="disabled")
+        ttk.Label(frame_vuelto_opciones, text="Vuelto en moneda:").pack(side="left", padx=(0, 6))
+        entry_vuelto_moneda = ttk.Entry(frame_vuelto_opciones, textvariable=vuelto_moneda_var, width=10, state="disabled")
         entry_vuelto_moneda.pack(side="left", padx=5)
         entry_vuelto_moneda.bind("<KeyRelease>", calcular_vuelto)
-        label_vuelto_moneda_entry = tk.Label(frame_vuelto_opciones, text="", font=("Arial", 10))
+        label_vuelto_moneda_entry = ttk.Label(frame_vuelto_opciones, text="")
         label_vuelto_moneda_entry.pack(side="left", padx=2)
 
         # Botones de denominaciones
-        frame_denominaciones = tk.Frame(main_frame)
+        frame_denominaciones = ttk.Frame(main_frame)
         frame_denominaciones.pack(fill="x", pady=5)
         for valor in [1, 5, 10, 20, 50]:
-            tk.Button(frame_denominaciones, text=f"+{valor}", command=lambda v=valor: agregar_denominacion(v), 
-                    bg="#E0E0E0", fg="black", font=("Arial", 8, "bold"), width=4, relief="raised", bd=2).pack(side="left", padx=1)
+            ttk.Button(frame_denominaciones, text=f"+{valor}", command=lambda v=valor: agregar_denominacion(v),
+                       style="Quick.TButton", width=4).pack(side="left", padx=2)
 
         # Botones de acción
-        frame_botones = tk.Frame(main_frame)
+        frame_botones = ttk.Frame(main_frame)
         frame_botones.pack(pady=20)
-        tk.Button(frame_botones, text="Guardar", command=guardar_pago, bg="#4CAF50", fg="white", width=12).pack(side="left", padx=10)
-        tk.Button(frame_botones, text="Cancelar", command=cancelar_pago, bg="#f44336", fg="white", width=12).pack(side="left", padx=10)
+        ttk.Button(frame_botones, text="Guardar", command=guardar_pago, style="Success.TButton", width=12).pack(side="left", padx=10)
+        ttk.Button(frame_botones, text="Cancelar", command=cancelar_pago, style="Danger.TButton", width=12).pack(side="left", padx=10)
 
         # Inicializar la interfaz
         actualizar_moneda()

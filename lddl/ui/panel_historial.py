@@ -12,64 +12,65 @@ from tkinter import filedialog, ttk
 from ..historial import revertir_registro
 from ..rutas import consulta
 from ..ventas_datos import _obtener_total_cobros, obtener_ventas
+from .estilos import COLOR_TARJETA, COLOR_TEXTO_SUAVE
 
 
 class PanelHistorialMixin:
     """Listado del historial, detalle, observaciones y borrado de registros."""
 
     def crear_panel_historial(self):
-        self.frame_contenido_historial = tk.Frame(self.scrollable_frame)
-        frame_filtros = tk.LabelFrame(self.frame_contenido_historial, text="Filtros", padx=10, pady=10)
-        frame_filtros.pack(fill="x", padx=10, pady=5)
+        self.frame_contenido_historial = ttk.Frame(self.scrollable_frame, style="Lienzo.TFrame")
+        frame_filtros = ttk.LabelFrame(self.frame_contenido_historial, text="FILTROS", padding=7)
+        frame_filtros.pack(fill="x", padx=8, pady=3)
 
-        frame_botones_accion = tk.Frame(frame_filtros)
+        frame_botones_accion = ttk.Frame(frame_filtros)
         frame_botones_accion.pack(fill="x", pady=2)
-        tk.Button(frame_botones_accion, text="Pagar Deuda", command=self.pagar_deuda, bg="#FF5722", fg="white", font=("Arial", 10, "bold")).pack(side="left", padx=2)
-        tk.Button(frame_botones_accion, text="Editar", command=self.editar_observacion, bg="#4CAF50", fg="white", font=("Arial", 10, "bold")).pack(side="left", padx=2)
-        tk.Button(frame_botones_accion, text="Eliminar del historial", command=self.eliminar_del_historial, bg="#f44336", fg="white", font=("Arial", 10, "bold")).pack(side="left", padx=2)
-        tk.Button(frame_botones_accion, text="Exportar a Excel", command=self.exportar_a_excel, bg="#4CAF50", fg="white", font=("Arial", 10, "bold")).pack(side="left", padx=2)
+        ttk.Button(frame_botones_accion, text="Pagar Deuda", command=self.pagar_deuda, style="DeepOrange.TButton").pack(side="left", padx=(0, 4))
+        ttk.Button(frame_botones_accion, text="Editar", command=self.editar_observacion, style="Success.TButton").pack(side="left", padx=4)
+        ttk.Button(frame_botones_accion, text="Eliminar del historial", command=self.eliminar_del_historial, style="Danger.TButton").pack(side="left", padx=4)
+        ttk.Button(frame_botones_accion, text="Exportar a Excel", command=self.exportar_a_excel, style="Primary.TButton").pack(side="left", padx=4)
 
-        frame_fecha = tk.Frame(frame_filtros)
-        frame_fecha.pack(fill="x", pady=2)
-        tk.Label(frame_fecha, text="Fecha (YYYY-MM-DD):").pack(side="left", padx=5)
-        self.entry_fecha = tk.Entry(frame_fecha, textvariable=self.filtro_fecha, width=12)
+        frame_fecha = ttk.Frame(frame_filtros)
+        frame_fecha.pack(fill="x", pady=(8, 2))
+        ttk.Label(frame_fecha, text="Fecha (YYYY-MM-DD):").pack(side="left", padx=(0, 6))
+        self.entry_fecha = ttk.Entry(frame_fecha, textvariable=self.filtro_fecha, width=12)
         self.entry_fecha.pack(side="left", padx=5)
-        tk.Button(frame_fecha, text="Filtrar", command=self.cargar_ventas, bg="#2196F3", fg="white").pack(side="left", padx=5)
-        tk.Button(frame_fecha, text="Refrescar", command=self.cargar_ventas, bg="#2196F3", fg="white").pack(side="left", padx=2)
-        tk.Button(frame_fecha, text="Limpiar", command=self.limpiar_filtros, bg="#607D8B", fg="white", font=("Arial", 10, "bold")).pack(side="left", padx=2)
+        ttk.Button(frame_fecha, text="Filtrar", command=self.cargar_ventas, style="Primary.TButton").pack(side="left", padx=5)
+        ttk.Button(frame_fecha, text="Refrescar", command=self.cargar_ventas, style="Primary.TButton").pack(side="left", padx=4)
+        ttk.Button(frame_fecha, text="Limpiar", command=self.limpiar_filtros, style="Neutro.TButton").pack(side="left", padx=4)
 
-        frame_producto = tk.Frame(frame_filtros)
+        frame_producto = ttk.Frame(frame_filtros)
         frame_producto.pack(fill="x", pady=3)
-        tk.Label(frame_producto, text="Producto:").pack(side="left", padx=5)
+        ttk.Label(frame_producto, text="Producto:").pack(side="left", padx=(0, 6))
         self.producto_filtro_var = tk.StringVar()
         self.combo_producto_filtro = ttk.Combobox(frame_producto, textvariable=self.producto_filtro_var, state="readonly", width=40)
         self.combo_producto_filtro.pack(side="left", padx=5)
         self.combo_producto_filtro.bind("<<ComboboxSelected>>", self.cargar_ventas)
         self.cargar_productos_filtro()
 
-        frame_tipo = tk.Frame(frame_filtros)
+        frame_tipo = ttk.Frame(frame_filtros)
         frame_tipo.pack(fill="x", pady=3)
-        tk.Label(frame_tipo, text="Tipo:", font=("Arial", 10, "bold")).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Todos", variable=self.filtro_tipo, value="todos", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Ventas", variable=self.filtro_tipo, value="ventas", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Cambio de Divisa", variable=self.filtro_tipo, value="cambio", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Entrada de Efectivo", variable=self.filtro_tipo, value="entrada_efectivo", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Salidas", variable=self.filtro_tipo, value="salidas", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Deudas", variable=self.filtro_tipo, value="deudas", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Salida de Efectivo", variable=self.filtro_tipo, value="salida_efectivo", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Merma", variable=self.filtro_tipo, value="merma", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_tipo, text="Entrada de Producto", variable=self.filtro_tipo, value="entrada_producto", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Label(frame_tipo, text="Tipo:", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
+        ttk.Radiobutton(frame_tipo, text="Todos", variable=self.filtro_tipo, value="todos", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_tipo, text="Ventas", variable=self.filtro_tipo, value="ventas", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_tipo, text="Cambio de Divisa", variable=self.filtro_tipo, value="cambio", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_tipo, text="Entrada de Efectivo", variable=self.filtro_tipo, value="entrada_efectivo", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_tipo, text="Salidas", variable=self.filtro_tipo, value="salidas", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_tipo, text="Deudas", variable=self.filtro_tipo, value="deudas", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_tipo, text="Salida de Efectivo", variable=self.filtro_tipo, value="salida_efectivo", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_tipo, text="Merma", variable=self.filtro_tipo, value="merma", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_tipo, text="Entrada de Producto", variable=self.filtro_tipo, value="entrada_producto", command=self.cargar_ventas).pack(side="left", padx=5)
 
-        frame_metodo = tk.Frame(frame_filtros)
+        frame_metodo = ttk.Frame(frame_filtros)
         frame_metodo.pack(fill="x", pady=3)
-        tk.Label(frame_metodo, text="Método de pago:", font=("Arial", 10, "bold")).pack(side="left", padx=5)
-        tk.Radiobutton(frame_metodo, text="Todos", variable=self.filtro_metodo, value="todos", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_metodo, text="Efectivo", variable=self.filtro_metodo, value="efectivo", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_metodo, text="Transferencia", variable=self.filtro_metodo, value="transferencia", command=self.cargar_ventas).pack(side="left", padx=5)
-        tk.Radiobutton(frame_metodo, text="Mixto", variable=self.filtro_metodo, value="mixto", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Label(frame_metodo, text="Método de pago:", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
+        ttk.Radiobutton(frame_metodo, text="Todos", variable=self.filtro_metodo, value="todos", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_metodo, text="Efectivo", variable=self.filtro_metodo, value="efectivo", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_metodo, text="Transferencia", variable=self.filtro_metodo, value="transferencia", command=self.cargar_ventas).pack(side="left", padx=5)
+        ttk.Radiobutton(frame_metodo, text="Mixto", variable=self.filtro_metodo, value="mixto", command=self.cargar_ventas).pack(side="left", padx=5)
 
-        self.frame_tabla_ventas = tk.LabelFrame(self.frame_contenido_historial, text="Registros", padx=10, pady=10)
-        self.frame_tabla_ventas.pack(fill="both", expand=True, padx=10, pady=5)
+        self.frame_tabla_ventas = ttk.LabelFrame(self.frame_contenido_historial, text="REGISTROS", padding=7)
+        self.frame_tabla_ventas.pack(fill="both", expand=True, padx=8, pady=3)
         columnas = ("ID", "Fecha", "Tipo", "Producto", "Monto", "Método Pago", "Observaciones")
         self.tabla_ventas = ttk.Treeview(self.frame_tabla_ventas, columns=columnas, show="headings")
         self.tabla_ventas.heading("ID", text="ID", anchor='center')
@@ -92,10 +93,10 @@ class PanelHistorialMixin:
         scrollbar.pack(side="right", fill="y")
         self.tabla_ventas.bind("<<TreeviewSelect>>", self.mostrar_detalle)
 
-        self.tabla_ventas.tag_configure('deuda_pendiente', foreground='red')
+        self.tabla_ventas.tag_configure('deuda_pendiente', foreground='#C4432E')
 
-        self.frame_detalle_venta = tk.LabelFrame(self.frame_contenido_historial, text="Detalle", padx=10, pady=10)
-        self.frame_detalle_venta.pack(fill="both", expand=True, padx=10, pady=5)
+        self.frame_detalle_venta = ttk.LabelFrame(self.frame_contenido_historial, text="DETALLE", padding=7)
+        self.frame_detalle_venta.pack(fill="both", expand=True, padx=8, pady=3)
         columnas_detalle = ("Campo", "Valor")
         self.tabla_detalle = ttk.Treeview(self.frame_detalle_venta, columns=columnas_detalle, show="headings")
         self.tabla_detalle.heading("Campo", text="Campo", anchor='center')
@@ -104,10 +105,12 @@ class PanelHistorialMixin:
         self.tabla_detalle.column("Valor", width=300, anchor='center')
         scrollbar_detalle = ttk.Scrollbar(self.frame_detalle_venta, orient="vertical", command=self.tabla_detalle.yview)
         self.tabla_detalle.configure(yscrollcommand=scrollbar_detalle.set)
+        # El pie va primero y al fondo: si se empaqueta despues de la tabla,
+        # pack le da la franja que sobra a la derecha en vez de la de abajo.
+        self.label_info = ttk.Label(self.frame_detalle_venta, text="Selecciona un registro de la lista para ver detalle", foreground=COLOR_TEXTO_SUAVE)
+        self.label_info.pack(side="bottom", fill="x", pady=(6, 0))
         self.tabla_detalle.pack(side="left", fill="both", expand=True)
         scrollbar_detalle.pack(side="right", fill="y")
-        self.label_info = tk.Label(self.frame_detalle_venta, text="Selecciona un registro de la lista para ver detalle", fg="gray")
-        self.label_info.pack(fill="x", pady=5)
 
     def limpiar_filtros(self):
         self.filtro_fecha.set("")
@@ -489,11 +492,12 @@ class PanelHistorialMixin:
         ventana_editar.resizable(False, False)
         ventana_editar.transient(self.root)
         ventana_editar.grab_set()
+        ventana_editar.configure(background=COLOR_TARJETA)
 
-        tk.Label(ventana_editar, text=f"Editar observación para {tipo} (ID {id_reg})", font=("Arial", 12, "bold")).pack(pady=5)
-        tk.Label(ventana_editar, text="Observaciones:", font=("Arial", 10)).pack(anchor="w", padx=20, pady=5)
+        ttk.Label(ventana_editar, text=f"Editar observación para {tipo} (ID {id_reg})", style="Titulo.TLabel").pack(pady=8)
+        ttk.Label(ventana_editar, text="Observaciones:").pack(anchor="w", padx=20, pady=5)
         texto_var = tk.StringVar(value=observacion_actual_db)
-        entry_obs = tk.Entry(ventana_editar, textvariable=texto_var, width=60, font=("Arial", 10))
+        entry_obs = ttk.Entry(ventana_editar, textvariable=texto_var, width=60)
         entry_obs.pack(padx=20, pady=5)
         entry_obs.focus_set()
         entry_obs.select_range(0, tk.END)
@@ -510,10 +514,10 @@ class PanelHistorialMixin:
         def cancelar_edicion():
             ventana_editar.destroy()
 
-        frame_botones_editar = tk.Frame(ventana_editar)
+        frame_botones_editar = ttk.Frame(ventana_editar)
         frame_botones_editar.pack(pady=20)
-        tk.Button(frame_botones_editar, text="Guardar", command=guardar_observacion, bg="#4CAF50", fg="white", width=12).pack(side="left", padx=10)
-        tk.Button(frame_botones_editar, text="Cancelar", command=cancelar_edicion, bg="#f44336", fg="white", width=12).pack(side="left", padx=10)
+        ttk.Button(frame_botones_editar, text="Guardar", command=guardar_observacion, style="Success.TButton", width=12).pack(side="left", padx=10)
+        ttk.Button(frame_botones_editar, text="Cancelar", command=cancelar_edicion, style="Danger.TButton", width=12).pack(side="left", padx=10)
 
     def exportar_a_excel(self):
         if pd is None:

@@ -59,6 +59,7 @@ PALETA_BOTONES = {
     "Brown": ("#7A5C46", "#5C4433", "white"),
     "BrownOscuro": ("#5C4433", "#432F24", "white"),
     "DeepOrange": ("#D2691E", "#B85A18", "white"),
+    "Neutro": ("#68796F", "#55655C", "white"),
     "Quick": ("#FFFFFF", "#EAF4EF", "#233129"),
 }
 
@@ -123,6 +124,11 @@ def configurar_estilos(style):
         estilo_rad = f"{nombre}.TRadiobutton"
         style.configure(estilo_rad, foreground=texto, background=COLOR_TARJETA)
 
+    # Los botones de denominacion son blancos: sin borde desaparecen cuando el
+    # fondo tambien es blanco (dialogo de Pagar Deuda), asi que llevan linea fina.
+    style.configure("Quick.TButton", relief="solid", borderwidth=1)
+    _borde(style, "Quick.TButton", COLOR_VUELTO_BORDE)
+
     style.configure("DeudaBold.TCheckbutton", foreground="#C4432E",
                     background=COLOR_TARJETA, font=("Segoe UI", 8, "bold"))
     style.configure("Titulo.TLabel", font=FUENTE_TITULO, background=COLOR_TARJETA)
@@ -148,6 +154,9 @@ def configurar_estilos(style):
                     foreground=COLOR_TOTAL, font=FUENTE_CIFRA)
     style.configure("TotalMoneda.TLabel", background=COLOR_TARJETA,
                     foreground=COLOR_TOTAL, font=("Segoe UI", 9, "bold"))
+    # Cifra verde sobre tarjeta blanca (el vuelto en los dialogos, sin banda detras)
+    style.configure("CifraVerde.TLabel", background=COLOR_TARJETA,
+                    foreground=COLOR_VUELTO_VALOR, font=FUENTE_CIFRA)
 
     # ---- Banda del Vuelto ----
     style.configure("Vuelto.TFrame", background=COLOR_VUELTO_FONDO)
