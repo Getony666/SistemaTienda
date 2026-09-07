@@ -54,7 +54,7 @@ class CobroMixin:
                 self.entry_tasa.config(state="normal")
                 self.tasa_cambio.set("")
                 self.entry_vuelto_moneda.config(state="normal")
-                self.frame_vuelto_divisa.pack(side="top", anchor="w", pady=(10, 0), before=self.label_resto_cup)
+                self.frame_vuelto_divisa.pack(side="top", anchor="w", pady=(6, 0), before=self.label_resto_cup)
                 self.label_vuelto_divisa_texto.config(text=f"Vuelto en {moneda}:")
                 self.label_moneda_pago.config(text=moneda)
                 self.label_vuelto_moneda.config(text=moneda)
@@ -108,13 +108,13 @@ class CobroMixin:
                     self.vuelto_var.set("0.00")
                     self.vuelto_total_cup = 0.0
                     self.entry_pagado.config(state="disabled")
-                    self.check_transferencia.configure(style="Success.TCheckbutton")
+                    self.check_transferencia.configure(style="PastillaOk.Toolbutton")
                 except:
                     self.pagado_var.set("0.00")
             else:
                 self.combo_moneda.config(state="readonly")
                 self.entry_pagado.config(state="normal")
-                self.check_transferencia.configure(style="Purple.TCheckbutton")
+                self.check_transferencia.configure(style="Pastilla.Toolbutton")
                 self.actualizar_moneda_pago()
         finally:
             self.actualizando = False
@@ -1061,7 +1061,7 @@ class CobroMixin:
             self.label_pago_efectivo_resto.config(text="")
             self.entry_pagado.config(state="normal")
             self.check_transferencia.config(state="normal")
-            self.check_transferencia.configure(style="Purple.TCheckbutton")
+            self.check_transferencia.configure(style="Pastilla.Toolbutton")
             self.label_vuelto_moneda.config(text="CUP")
             self.label_moneda_pago.config(text="CUP")
             self.label_pagado.config(text="Pagado (efectivo):")
@@ -1129,7 +1129,7 @@ class CobroMixin:
             self.label_pago_efectivo_resto.config(text="")
             self.entry_pagado.config(state="normal")
             self.check_transferencia.config(state="normal")
-            self.check_transferencia.configure(style="Purple.TCheckbutton")
+            self.check_transferencia.configure(style="Pastilla.Toolbutton")
             self.label_vuelto_moneda.config(text="CUP")
             self.label_moneda_pago.config(text="CUP")
             self.label_pagado.config(text="Pagado (efectivo):")

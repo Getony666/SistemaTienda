@@ -30,7 +30,7 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
         self.root.title("La Despensa de Leslia - Sistema Integrado")
         self.style = ttk.Style(self.root)
         configurar_estilos(self.style)
-        self.color_fondo = self.style.lookup("TFrame", "background")
+        self.color_fondo = self.style.lookup("Lienzo.TFrame", "background")
         try:
             self.root.state('zoomed')
         except:
@@ -158,7 +158,7 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
         self.scrollbar_x = ttk.Scrollbar(self.root, orient="horizontal", command=self.canvas.xview)
         self.scrollbar_x.grid(row=1, column=0, sticky="ew")
         self.canvas.configure(yscrollcommand=self.scrollbar_y.set, xscrollcommand=self.scrollbar_x.set)
-        self.scrollable_frame = ttk.Frame(self.canvas)
+        self.scrollable_frame = ttk.Frame(self.canvas, style="Lienzo.TFrame")
         self.scrollable_frame.grid_columnconfigure(0, weight=1)
         self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         def _configure_canvas(event):
@@ -166,6 +166,14 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
             self.scrollable_frame.update_idletasks()
             self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         self.canvas.bind('<Configure>', _configure_canvas)
+
+        # El contenido tambien crece por su cuenta (al pagar en divisa aparecen
+        # filas nuevas). Sin esto el area desplazable se queda con la medida
+        # vieja y lo que sobresale por abajo -Finalizar y Cancelar Venta- queda
+        # fuera de alcance de la barra.
+        def _configure_interior(event):
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.scrollable_frame.bind('<Configure>', _configure_interior)
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
         self.canvas.bind_all("<Shift-MouseWheel>", self._on_shift_mousewheel)
 
@@ -175,7 +183,7 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
         self.canvas.xview_scroll(int(-1*(event.delta/120)), "units")
 
     def crear_botones_principales(self):
-        self.frame_botones_principales = ttk.Frame(self.scrollable_frame, padding=(16, 12), style="NavBar.TFrame")
+        self.frame_botones_principales = ttk.Frame(self.scrollable_frame, padding=(14, 8), style="NavBar.TFrame")
         self.frame_botones_principales.pack(fill="x")
         self.btn_ventas = ttk.Button(self.frame_botones_principales, text="🛒 Ventas", command=self.toggle_panel_ventas, style="NavActivo.TButton")
         self.btn_ventas.pack(side="left", padx=(0, 8))
