@@ -733,7 +733,7 @@ class PanelVentasMixin:
     def crear_formulario_salida(self):
         self.frame_formulario_salida = ttk.LabelFrame(self.frame_contenedor_dinamico, text="REGISTRAR SALIDA", padding=7)
         ttk.Label(self.frame_formulario_salida, text="Producto:", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.label_salida_producto = ttk.Label(self.frame_formulario_salida, text="(Ninguno seleccionado)", foreground="gray")
+        self.label_salida_producto = ttk.Label(self.frame_formulario_salida, text="(Ninguno seleccionado)", foreground=COLOR_TEXTO_SUAVE)
         self.label_salida_producto.grid(row=0, column=1, columnspan=3, padx=5, pady=5, sticky="w")
         ttk.Label(self.frame_formulario_salida, text="Precio Costo (CUP):", font=("Segoe UI", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
         self.label_salida_precio = ttk.Label(self.frame_formulario_salida, text="0.00", foreground=COLOR_TOTAL)
@@ -780,7 +780,7 @@ class PanelVentasMixin:
             self.salida_producto_id.set("")
             self.salida_cantidad.set("1.0")
             self.salida_motivo.set("Salida a trabajador")
-            self.label_salida_producto.config(text="(Ninguno seleccionado)", fg="gray")
+            self.label_salida_producto.config(text="(Ninguno seleccionado)", foreground=COLOR_TEXTO_SUAVE)
             self.label_salida_precio.config(text="0.00 CUP")
             if self.panel_ventas_visible:
                 self.cargar_productos()
@@ -810,7 +810,7 @@ class PanelVentasMixin:
                 self.salida_producto_id.set("")
                 self.salida_cantidad.set("1.0")
                 self.salida_motivo.set("Salida a trabajador")
-                self.label_salida_producto.config(text="(Ninguno seleccionado)", fg="gray")
+                self.label_salida_producto.config(text="(Ninguno seleccionado)", foreground=COLOR_TEXTO_SUAVE)
                 self.label_salida_precio.config(text="0.00 CUP")
                 if self.panel_ventas_visible:
                     self.cargar_productos()
@@ -945,7 +945,7 @@ class PanelVentasMixin:
     def crear_formulario_merma(self):
         self.frame_formulario_merma = ttk.LabelFrame(self.frame_contenedor_dinamico, text="REGISTRAR MERMA", padding=7)
         ttk.Label(self.frame_formulario_merma, text="Producto:", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.label_merma_producto = ttk.Label(self.frame_formulario_merma, text="(Ninguno seleccionado)", foreground="gray")
+        self.label_merma_producto = ttk.Label(self.frame_formulario_merma, text="(Ninguno seleccionado)", foreground=COLOR_TEXTO_SUAVE)
         self.label_merma_producto.grid(row=0, column=1, columnspan=3, padx=5, pady=5, sticky="w")
         ttk.Label(self.frame_formulario_merma, text="Stock actual:", font=("Segoe UI", 10, "bold")).grid(row=1, column=0, padx=5, pady=5, sticky="w")
         self.label_merma_stock = ttk.Label(self.frame_formulario_merma, text="0", foreground=COLOR_TOTAL)
@@ -985,7 +985,7 @@ class PanelVentasMixin:
             self.merma_producto_id.set("")
             self.merma_cantidad.set("1.0")
             self.merma_motivo.set("Merma")
-            self.label_merma_producto.config(text="(Ninguno seleccionado)", fg="gray")
+            self.label_merma_producto.config(text="(Ninguno seleccionado)", foreground=COLOR_TEXTO_SUAVE)
             self.label_merma_stock.config(text="0")
             if self.panel_ventas_visible:
                 self.cargar_productos()
@@ -1014,7 +1014,7 @@ class PanelVentasMixin:
                 self.merma_producto_id.set("")
                 self.merma_cantidad.set("1.0")
                 self.merma_motivo.set("Merma")
-                self.label_merma_producto.config(text="(Ninguno seleccionado)", fg="gray")
+                self.label_merma_producto.config(text="(Ninguno seleccionado)", foreground=COLOR_TEXTO_SUAVE)
                 self.label_merma_stock.config(text="0")
                 if self.panel_ventas_visible:
                     self.cargar_productos()
