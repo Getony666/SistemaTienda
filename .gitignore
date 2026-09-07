@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.exe
+*.spec
+build/
+dist/
+
+tienda.db
+config_caja.json
+
+.venv/
+venv/
