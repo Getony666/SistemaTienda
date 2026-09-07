@@ -439,7 +439,7 @@ class CobroMixin:
 
                     # Si también existe una sugerencia automática
                     # de transferencia, se limpia.
-                    if not pago_transferencia_adicional_text:
+                    if not pago_cup_transferencia_text:
                         pago_cup_transferencia = 0.0
 
                 # Calcular nuevamente con los valores reales.
