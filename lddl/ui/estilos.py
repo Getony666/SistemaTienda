@@ -71,6 +71,18 @@ PALETA_TEXTO_MARCADO = {
     "Danger": "#C4432E",
 }
 
+# Acento de cada fila del resumen de Corte de Caja. Las filas son blancas y
+# el color vive solo en la franja de la izquierda, la etiqueta y la cifra.
+COLORES_CORTE = {
+    "efectivo": "#2E9E6B",
+    "transferencia": "#7B4FA3",
+    "deudas": "#B87B1E",
+    "divisas": "#2E7D6B",
+    "utilidad": "#D2691E",
+    "esperado": "#1F5A4C",
+    "ventas": "#68796F",
+}
+
 # Pastillas de la seccion Pago: (nombre_estilo, color_cuando_esta_marcada)
 PALETA_PASTILLAS = {
     "Pastilla": COLOR_PASTILLA_ON,
@@ -168,6 +180,11 @@ def configurar_estilos(style):
                     foreground=COLOR_TEXTO_SUAVE, font=("Segoe UI", 9, "bold"))
     style.configure("VueltoResto.TLabel", background=COLOR_VUELTO_FONDO,
                     foreground=COLOR_TEXTO_SUAVE, font=("Segoe UI", 8, "italic"))
+
+    # ---- Filas del resumen de Corte de Caja ----
+    style.configure("FilaResumen.TFrame", background=COLOR_TARJETA,
+                    relief="solid", borderwidth=1)
+    _borde(style, "FilaResumen.TFrame", COLOR_BORDE)
 
     # ---- Hueco donde aparecen los formularios de Acciones ----
     style.configure("Placeholder.TFrame", background=COLOR_TARJETA,
