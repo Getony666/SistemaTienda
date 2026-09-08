@@ -7,9 +7,13 @@ Un solo programa, sin navegador a la vista y sin conexión a internet:
 3. Abre una ventana nativa de Windows con WebView2 dentro, que en Windows 10
    y 11 ya viene instalado.
 
-Sólo está hecho el panel de Ventas: es una prueba para comparar con la
-ventana de tkinter, que sigue funcionando igual con `python ventas.py`.
-Las dos trabajan sobre la misma base de datos.
+Ésta es la interfaz del programa. Están los cuatro paneles: Ventas,
+Historial, Cambio de Divisa y Corte de Caja.
+
+La ventana de tkinter (`python ventas.py`) se queda en el repositorio porque
+de ella cuelgan las pruebas de caracterización, que son las que garantizan
+que las cuentas no cambiaron al mudarse. Ya no se trabaja ni se compila.
+Las dos abren la misma base de datos.
 
     cd interfaz && npm install && npm run build
     cd .. && python escritorio.py
