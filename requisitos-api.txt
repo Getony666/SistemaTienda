@@ -1,0 +1,12 @@
+# Sólo para la API. La aplicación de escritorio NO necesita nada de esto,
+# así que no entra en el .exe: se instala aparte, en la máquina que sirva
+# el panel del dueño.
+#
+#     pip install -r requisitos-api.txt
+#     python -m uvicorn lddl.api:app --reload
+#
+# La documentación interactiva queda en http://127.0.0.1:8000/docs
+
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27          # sólo para las pruebas (fastapi.testclient)
