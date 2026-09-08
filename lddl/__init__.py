@@ -1,4 +1,8 @@
-"""La Despensa de Leslia — sistema de ventas, caja e inventario.
+"""MiTienda — sistema de ventas, caja e inventario.
+
+El nombre del producto vive aquí y en ningún otro sitio: para entregárselo a
+otro negocio basta cambiar NOMBRE_APP, y con él cambian el título de la
+ventana, el de la API y el del ejecutable.
 
 El paquete separa la lógica de datos de la interfaz:
 
@@ -11,3 +15,6 @@ El paquete separa la lógica de datos de la interfaz:
     ventas_datos.py  ventas, deudas y cobros
     ui/              la ventana y sus paneles
 """
+
+NOMBRE_APP = "MiTienda"
+TITULO_VENTANA = f"{NOMBRE_APP} - Sistema Integrado"

@@ -8,6 +8,7 @@ except ImportError:  # sólo hace falta para exportar a Excel
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from .. import TITULO_VENTANA
 from ..caja import cargar_fondo_por_fecha, guardar_fondo_por_fecha, obtener_resumen_caja
 from .estilos import COLOR_TARJETA, COLOR_TEXTO, COLOR_TEXTO_SUAVE, COLORES_CORTE
 
@@ -208,7 +209,7 @@ class PanelCorteMixin:
         self.label_corte_total_esperado.config(text=f"{total_esperado:.2f} CUP")
 
         self.label_corte_total_general.config(text=f"{resumen['total_ventas_dia']:.2f} CUP")
-        self.root.title(f"La Despensa de Leslia - Sistema Integrado")
+        self.root.title(TITULO_VENTANA)
 
     def generar_resumen_texto_corte(self):
         fecha = self.corte_fecha_var.get().strip()

@@ -1,4 +1,4 @@
-"""Punto de entrada de La Despensa de Leslia.
+"""Punto de entrada de MiTienda.
 
     python3 ventas.py
 

@@ -26,6 +26,7 @@ import re
 from fastapi import FastAPI, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 
+from . import NOMBRE_APP
 from . import calculo_cobro as cc
 from .caja import cargar_fondo_por_fecha, obtener_resumen_caja, obtener_saldo_divisas
 from .productos import buscar_productos
@@ -34,7 +35,7 @@ from .ventas_datos import obtener_ventas
 FECHA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 app = FastAPI(
-    title="La Despensa de Leslia",
+    title=NOMBRE_APP,
     description="Consulta del punto de venta. La caja sigue siendo la que manda.",
     version="1.0.0",
 )

@@ -10,6 +10,7 @@ import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from .. import TITULO_VENTANA
 from ..caja import cargar_fondo_por_fecha
 from ..esquema import verificar_y_crear_columnas
 from .cobro import CobroMixin
@@ -27,7 +28,7 @@ class VentanaVentas(PanelVentasMixin, CobroMixin, PanelHistorialMixin,
 
     def __init__(self, master):
         self.root = master
-        self.root.title("La Despensa de Leslia - Sistema Integrado")
+        self.root.title(TITULO_VENTANA)
         self.style = ttk.Style(self.root)
         configurar_estilos(self.style)
         self.color_fondo = self.style.lookup("Lienzo.TFrame", "background")
