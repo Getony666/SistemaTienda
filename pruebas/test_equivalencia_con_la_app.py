@@ -77,7 +77,9 @@ REFERENCIA = {
 }
 
 
-# Lo que la cajera ve en pantalla, también tomado de la app antes de extraer:
+# Lo que la cajera ve en pantalla. Tomado de la app antes de extraer, con una
+# corrección deliberada: el monto del vuelto ya no lleva la moneda, porque la
+# etiqueta de al lado ya la muestra y se leía "1000.00 CUP CUP".
 # (vuelto, resumen del pago, resto en CUP, campo de CUP adicional).
 TEXTOS = {
     "CUP justo": ('0.00', 'Efectivo: 2250.00', '', ''),
@@ -90,16 +92,16 @@ TEXTOS = {
     "CUP solo transferencia": ('0.00', 'Transferencia: 1000.00', '', ''),
     "CUP centavos": ('0.01', 'Efectivo: 100.00', '', ''),
     "USD justo": ('0.00', '10.00 USD (=4000.00 CUP)', '', ''),
-    "USD de mas": ('1000.00 CUP', '15.00 USD (=6000.00 CUP)', 'Todo el vuelto en CUP', ''),
+    "USD de mas": ('1000.00', '15.00 USD (=6000.00 CUP)', 'Todo el vuelto en CUP', ''),
     "USD no alcanza sin CUP": ('0.00', '10.00 USD (=4000.00 CUP) + 1000.00 CUP (efectivo)', '', '1000.00'),
     "USD con CUP efectivo": ('0.00', '10.00 USD (=4000.00 CUP) + 1000.00 CUP (efectivo)', '', '1000'),
-    "USD con CUP de mas": ('500.00 CUP', '10.00 USD (=4000.00 CUP) + 1500.00 CUP (efectivo)', 'Todo el vuelto en CUP', '1500'),
+    "USD con CUP de mas": ('500.00', '10.00 USD (=4000.00 CUP) + 1500.00 CUP (efectivo)', 'Todo el vuelto en CUP', '1500'),
     "USD con CUP transferencia": ('0.00', '10.00 USD (=4000.00 CUP) + 1000.00 CUP (transferencia)', '', ''),
-    "USD con los dos CUP": ('200.00 CUP', '8.00 USD (=3200.00 CUP) + 1000.00 CUP (efectivo) + 1000.00 CUP (transferencia)', 'Todo el vuelto en CUP', '1000'),
+    "USD con los dos CUP": ('200.00', '8.00 USD (=3200.00 CUP) + 1000.00 CUP (efectivo) + 1000.00 CUP (transferencia)', 'Todo el vuelto en CUP', '1000'),
     "USD vuelto repartido": ('2.00 USD + 200.00 CUP', '15.00 USD (=6000.00 CUP)', 'Resto en CUP: 200.00', ''),
     "USD vuelto todo en divisa": ('2.50 USD', '15.00 USD (=6000.00 CUP)', 'Todo el vuelto en moneda de pago', ''),
     "USD sin divisa solo CUP": ('0.00', '500.00 CUP (efectivo)', '', '500'),
-    "EUR de mas": ('600.00 CUP', '8.00 EUR (=3600.00 CUP)', 'Todo el vuelto en CUP', ''),
+    "EUR de mas": ('600.00', '8.00 EUR (=3600.00 CUP)', 'Todo el vuelto en CUP', ''),
 }
 
 
@@ -227,21 +229,22 @@ CASOS_MIXTO = [
 
 # (vuelto, resumen, vuelto en CUP, efectivo que la app rellena sola)
 MIXTO = {
-    "transferencia parcial": ('0.00 CUP', 'Efectivo: 600.00  |  Transferencia: 400.00', 0.0, '600.00'),
-    "transferencia total": ('0.00 CUP', 'Transferencia: 1000.00', 0.0, '0.00'),
-    "transferencia de mas": ('0.00 CUP', '', 0.0, ''),
-    "transferencia negativa": ('0.00 CUP', '', 0.0, ''),
-    "sin transferencia": ('200.00 CUP', 'Efectivo: 1200.00', 200.0, '1200'),
-    "efectivo insuficiente": ('0.00 CUP', 'Efectivo: 500.00', 0.0, '500'),
+    "transferencia parcial": ('0.00', 'Efectivo: 600.00 | Transferencia: 400.00', 0.0, '600.00'),
+    "transferencia total": ('0.00', 'Transferencia: 1000.00', 0.0, '0.00'),
+    "transferencia de mas": ('0.00', '', 0.0, ''),
+    "transferencia negativa": ('0.00', '', 0.0, ''),
+    "sin transferencia": ('200.00', 'Efectivo: 1200.00', 200.0, '1200'),
+    "efectivo insuficiente": ('0.00', 'Efectivo: 500.00', 0.0, '500'),
 }
 
 
 @unittest.skipUnless(HAY_PANTALLA, "hace falta entorno gráfico")
 class TecleandoEnTransferencia(unittest.TestCase):
-    """El vuelto al escribir en el campo de transferencia tampoco cambia.
+    """El vuelto al escribir en el campo de transferencia.
 
-    Este camino formatea el resumen con doble espacio alrededor de la barra,
-    al contrario que el otro. Se conserva tal cual estaba.
+    Este camino formateaba el resumen con doble espacio alrededor de la barra
+    y repetía la moneda en el monto. Ambas cosas se unificaron con el otro
+    camino; estos valores reflejan ya la corrección.
     """
 
     @classmethod

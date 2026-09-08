@@ -156,12 +156,7 @@ class CobroMixin:
             pass
 
     def calcular_vuelto_con_pago_mixto(self, event=None):
-        """Recalcula al teclear en el campo de transferencia.
-
-        El resumen de esta vía lleva doble espacio alrededor de la barra, al
-        contrario que el de _vuelto_en_cup. Se conserva tal cual para no
-        cambiar lo que la cajera ve.
-        """
+        """Recalcula al teclear en el campo de transferencia."""
         if self.moneda_pago.get() != cc.CUP or self.transferencia_var.get() == 1:
             return
         self._actualizar_efectivo_desde_transferencia()
@@ -179,32 +174,23 @@ class CobroMixin:
             if pago.efectivo + pago.transferencia < 0:
                 return
 
-            if pago.efectivo > 0 and pago.transferencia > 0:
-                resumen = (f"Efectivo: {pago.efectivo:.2f}  |  "
-                           f"Transferencia: {pago.transferencia:.2f}")
-            elif pago.transferencia > 0:
-                resumen = f"Transferencia: {pago.transferencia:.2f}"
-            elif pago.efectivo > 0:
-                resumen = f"Efectivo: {pago.efectivo:.2f}"
-            else:
-                resumen = ""
-            self.label_pago_efectivo_resto.config(text=resumen)
+            self.label_pago_efectivo_resto.config(text=cc.texto_resumen_pago(pago))
 
             vuelto = cc.calcular_vuelto(pago)
             self.label_vuelto_moneda.config(text="CUP")
             self.vuelto_total_cup = vuelto.vuelto_cup if vuelto.cubre else 0.0
 
             if vuelto.cubre and vuelto.vuelto_cup > 0:
-                self.vuelto_var.set(f"{vuelto.vuelto_cup:.2f} CUP")
+                self.vuelto_var.set(f"{vuelto.vuelto_cup:.2f}")
                 self.entry_vuelto_moneda.config(state="disabled")
                 self.vuelto_moneda_var.set("")
                 self.label_resto_cup.config(text="")
             else:
-                self.vuelto_var.set("0.00 CUP")
+                self.vuelto_var.set("0.00")
         except ValueError:
             self.pago_transferencia_var.set("")
             self.label_pago_efectivo_resto.config(text="")
-            self.vuelto_var.set("0.00 CUP")
+            self.vuelto_var.set("0.00")
             self.vuelto_total_cup = 0.0
 
     def _limpiar_zona_vuelto(self):
@@ -403,7 +389,8 @@ class CobroMixin:
             resto = "Todo el vuelto en moneda de pago"
             moneda_label = ""
         else:
-            texto = f"{vuelto.vuelto_cup:.2f} CUP"
+            # La moneda la pone la etiqueta de al lado, no el monto.
+            texto = f"{vuelto.vuelto_cup:.2f}"
             resto = "Todo el vuelto en CUP"
             moneda_label = "CUP"
 
