@@ -34,15 +34,18 @@ from pydantic import BaseModel, Field
 
 from . import NOMBRE_APP
 from . import calculo_cobro as cc
+from . import calculo_deuda as cd
 from .caja import (
     cargar_fondo_por_fecha,
     guardar_fondo_por_fecha,
+    obtener_efectivo_disponible_cup,
     obtener_resumen_caja,
     obtener_saldo_divisas,
     registrar_entrada_efectivo,
     registrar_operacion_cambio,
     registrar_salida_efectivo,
 )
+from .rutas import consulta
 from .historial import revertir_registro
 from .inventario import registrar_merma, registrar_salida
 from .productos import actualizar_producto, agregar_producto, buscar_productos, eliminar_producto
@@ -284,16 +287,109 @@ def registrar_venta(venta: VentaEntrante):
     return {"ok": True, "venta_id": resultado, "vuelto_texto": desglose.vuelto_texto}
 
 
-@app.post("/deudas/{venta_id}/cobros", tags=["ventas"], status_code=201)
-def cobrar_deuda(venta_id: int, datos: dict):
-    """Registra el cobro -total o parcial- de una deuda pendiente.
+class AbonoEntrante(BaseModel):
+    """Lo que la cajera teclea para abonar una deuda."""
 
-    OJO: a diferencia de /ventas, aquí `datos` llega ya calculado. El cálculo
-    del cobro de deudas sigue viviendo dentro de `lddl/ui/dialogo_deuda.py`, y
-    hasta que se extraiga como se hizo con el de la venta, quien llame a este
-    endpoint tiene que componer esos importes por su cuenta.
+    moneda: str = Field("CUP", description="CUP, USD o EUR")
+    tasa: float = Field(1.0, description="CUP por unidad de la moneda de pago")
+    metodo: str = Field("Efectivo", description="Efectivo, Transferencia o Mixto")
+    efectivo: float = Field(0.0, ge=0, description="En CUP, o en la divisa si moneda != CUP")
+    transferencia: float = Field(0.0, ge=0, description="Sólo cuando se paga en CUP")
+    efectivo_cup: float = Field(0.0, ge=0, description="CUP añadido al pago en divisa")
+    vuelto_en_moneda: float = Field(0.0, ge=0, description="Parte del cambio a devolver en divisa")
+
+
+def _deuda_pendiente(venta_id):
+    """Saldo y observaciones de una deuda, o un error si no se puede cobrar."""
+    with consulta() as (_conexion, cursor):
+        cursor.execute(
+            "SELECT es_deuda, pagada, saldo_pendiente, observaciones "
+            "FROM ventas WHERE id = ?", (venta_id,))
+        fila = cursor.fetchone()
+
+    if not fila:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    es_deuda, pagada, saldo, observaciones = fila
+    if es_deuda != 1:
+        raise HTTPException(status_code=422, detail="Esa venta no es una deuda")
+    if pagada == 1:
+        raise HTTPException(status_code=422, detail="Esa deuda ya está pagada")
+    return saldo, observaciones
+
+
+def _cobro_de(venta_id, abono_entrante):
+    saldo, observaciones = _deuda_pendiente(venta_id)
+    abono = cd.Abono(saldo_pendiente=saldo, **abono_entrante.model_dump())
+    cobro = cd.calcular_cobro(abono)
+    if cobro.error:
+        raise HTTPException(status_code=422, detail=cobro.error)
+    return saldo, observaciones, cobro
+
+
+@app.post("/deudas/{venta_id}/simular", tags=["ventas"])
+def simular_cobro_deuda(venta_id: int, abono: AbonoEntrante):
+    """Qué pasaría con ese abono. No guarda nada.
+
+    Sirve para que la interfaz enseñe el vuelto y el saldo restante mientras
+    la cajera teclea, sin reimplementar el cálculo.
     """
-    return _resultado(registrar_cobro_deuda_en_db(venta_id, datos))
+    saldo, _observaciones, cobro = _cobro_de(venta_id, abono)
+    return {
+        "saldo_pendiente": saldo,
+        "total_pagado_cup": cobro.total_pagado_cup,
+        "nuevo_saldo": cobro.nuevo_saldo,
+        "pagada": cobro.pagada,
+        "vuelto_cup": cobro.vuelto_cup,
+        "vuelto_moneda": cobro.vuelto_moneda,
+        "vuelto_en_cup_a_entregar": cd.vuelto_en_cup_a_entregar(cobro),
+        "metodo_pago_real": cobro.metodo_pago_real,
+        "resumen": cd.resumen_del_cobro(cobro),
+    }
+
+
+@app.post("/deudas/{venta_id}/cobros", tags=["ventas"], status_code=201)
+def cobrar_deuda(venta_id: int, abono: AbonoEntrante):
+    """Registra el cobro, total o parcial, de una deuda pendiente.
+
+    El desglose lo calcula la API con `calculo_deuda`, el mismo módulo que usa
+    el diálogo de tkinter: quien llame no tiene que componer los importes.
+    """
+    _saldo, observaciones, cobro = _cobro_de(venta_id, abono)
+
+    # Lo único que no decide el cálculo: si la caja tiene ese dinero.
+    falta = cd.vuelto_en_cup_a_entregar(cobro)
+    if falta > 0:
+        disponible = obtener_efectivo_disponible_cup(
+            datetime.datetime.now().strftime("%Y-%m-%d"))
+        if falta > disponible:
+            raise HTTPException(
+                status_code=422,
+                detail=f"No hay suficiente efectivo en caja para el vuelto. "
+                       f"Requerido: {falta:.2f} CUP, disponible: {disponible:.2f} CUP")
+
+    exito, mensaje = registrar_cobro_deuda_en_db(venta_id, {
+        "moneda": cobro.moneda,
+        "tasa": cobro.tasa,
+        "metodo": cobro.metodo,
+        "efectivo": cobro.efectivo,
+        "transferencia": cobro.transferencia,
+        "efectivo_cup": cobro.efectivo_cup,
+        "vuelto_cup": cobro.vuelto_cup,
+        "vuelto_moneda": cobro.vuelto_moneda,
+        "total_pagado_moneda": cobro.total_pagado_moneda,
+        "total_pagado_cup": cobro.total_pagado_cup,
+        "nuevo_saldo": cobro.nuevo_saldo,
+        "pagada": cobro.pagada,
+        "fecha_pago": (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                       if cobro.pagada == 1 else None),
+        "metodo_pago_real": cobro.metodo_pago_real,
+        "observaciones": cd.observaciones_del_cobro(observaciones, cobro).strip(),
+    })
+    if not exito:
+        raise HTTPException(status_code=422, detail=mensaje)
+    return {"ok": True, "mensaje": cd.resumen_del_cobro(cobro),
+            "pagada": cobro.pagada, "nuevo_saldo": cobro.nuevo_saldo,
+            "vuelto_cup": cobro.vuelto_cup}
 
 
 # ---------------------------------------------------------------- productos

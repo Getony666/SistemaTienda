@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, dinero, enviar } from "./api";
+import DialogoDeuda from "./DialogoDeuda";
 
 const TIPOS = [
   ["todos", "Todos"], ["ventas", "Ventas"], ["deudas", "Deudas"],
@@ -21,6 +22,7 @@ export default function PanelHistorial() {
   const [elegido, setElegido] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [cargando, setCargando] = useState(false);
+  const [cobrando, setCobrando] = useState(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -54,10 +56,21 @@ export default function PanelHistorial() {
   }
 
   const esDeudaPendiente = (r) =>
-    r.tipo === "Deuda" && r.detalle_extra?.pagada === 0;
+    r?.tipo === "Deuda" && r?.detalle_extra?.pagada === 0;
 
   return (
     <div className="cuerpo una-columna">
+      {cobrando && (
+        <DialogoDeuda
+          deuda={cobrando}
+          alCerrar={() => setCobrando(null)}
+          alCobrar={(mensaje) => {
+            setCobrando(null);
+            setAviso({ tipo: "bien", texto: mensaje });
+            cargar();
+          }}
+        />
+      )}
       <section className="tarjeta">
         <h2>Filtros</h2>
         <div className="fila" style={{ marginBottom: 10 }}>
@@ -66,6 +79,8 @@ export default function PanelHistorial() {
                  onChange={(e) => setFecha(e.target.value)} />
           <button className="boton fantasma" onClick={() => setFecha("")}>Todas</button>
           <button className="boton" onClick={cargar}>Refrescar</button>
+          <button className="boton naranja" onClick={() => setCobrando(elegido)}
+                  disabled={!elegido || !esDeudaPendiente(elegido)}>Pagar deuda</button>
           <button className="boton rojo" onClick={revertir}
                   disabled={!elegido}>Eliminar del historial</button>
         </div>

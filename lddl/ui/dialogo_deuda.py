@@ -5,10 +5,23 @@ import json
 import tkinter as tk
 from tkinter import ttk
 
+from .. import calculo_cobro as cc
+from .. import calculo_deuda as cd
 from ..caja import obtener_efectivo_disponible_cup
 from ..rutas import consulta
 from ..ventas_datos import registrar_cobro_deuda_en_db
 from .estilos import COLOR_PASTILLA_ON, COLOR_TARJETA, COLOR_TOTAL
+
+
+MOTIVOS_DEUDA = {
+    "tasa_invalida": "Ingresa una tasa de cambio válida",
+    "montos_negativos": "Los montos no pueden ser negativos",
+    "divisa_solo_efectivo": "Solo se permite Efectivo para pagos en divisa",
+    "mixto_solo_cup": "El pago mixto solo está disponible en CUP",
+    "mixto_necesita_ambos": "Para pago mixto, ambos montos deben ser mayores que 0",
+    "vuelto_negativo": "El vuelto no puede ser negativo",
+    "vuelto_moneda_excede": "El vuelto en moneda no puede exceder el vuelto total.",
+}
 
 
 class DialogoDeudaMixin:
@@ -271,150 +284,102 @@ class DialogoDeudaMixin:
             calcular_vuelto()
 
         def guardar_pago():
+            """Recoge lo tecleado, pide el cálculo y guarda el abono.
+
+            La aritmética vive en `lddl/calculo_deuda.py`. Aquí sólo quedan
+            los campos, los mensajes y la comprobación de que hay efectivo en
+            caja para el vuelto, que necesita la base.
+            """
             try:
-                moneda = moneda_pago.get()
-                tasa = float(tasa_var.get()) if moneda != "CUP" else 1.0
-                if moneda != "CUP" and tasa <= 0:
-                    self.mostrar_mensaje("error", "Error", "Ingresa una tasa de cambio válida")
+                abono = cd.Abono(
+                    saldo_pendiente=saldo_pendiente,
+                    moneda=moneda_pago.get(),
+                    tasa=cc.a_numero(tasa_var.get(), 1.0)
+                        if moneda_pago.get() != cd.CUP else 1.0,
+                    metodo=metodo_pago.get(),
+                    efectivo=cc.a_numero(monto_efectivo.get()),
+                    transferencia=cc.a_numero(monto_transferencia.get()),
+                    efectivo_cup=cc.a_numero(monto_efectivo_cup.get()),
+                    vuelto_en_moneda=cc.a_numero(vuelto_moneda_var.get()),
+                )
+
+                cobro = cd.calcular_cobro(abono)
+                if cobro.error:
+                    self.mostrar_mensaje("error", "Error", MOTIVOS_DEUDA.get(
+                        cobro.error, "Revisa los montos del pago"))
                     return
 
-                efectivo_text = monto_efectivo.get().strip()
-                transferencia_text = monto_transferencia.get().strip()
-                efectivo_cup_text = monto_efectivo_cup.get().strip()
-                
-                efectivo = float(efectivo_text) if efectivo_text else 0.0
-                transferencia = float(transferencia_text) if transferencia_text else 0.0
-                efectivo_cup = float(efectivo_cup_text) if efectivo_cup_text else 0.0
-
-                if efectivo < 0 or transferencia < 0 or efectivo_cup < 0:
-                    self.mostrar_mensaje("error", "Error", "Los montos no pueden ser negativos")
-                    return
-
-                metodo = metodo_pago.get()
-                
-                # Validar método de pago
-                if moneda != "CUP" and metodo != "Efectivo":
-                    self.mostrar_mensaje("error", "Error", "Solo se permite Efectivo para pagos en divisa")
-                    return
-                if metodo == "Mixto" and moneda != "CUP":
-                    self.mostrar_mensaje("error", "Error", "El pago mixto solo está disponible en CUP")
-                    return
-                if metodo == "Mixto" and (efectivo <= 0 or transferencia <= 0):
-                    self.mostrar_mensaje("error", "Error", "Para pago mixto, ambos montos deben ser mayores que 0")
-                    return
-                
-                # Calcular total pagado
-                if moneda != "CUP":
-                    total_pagado_moneda = efectivo  # Solo el monto en divisa
-                    total_pagado_cup = (efectivo * tasa) + efectivo_cup
-                    # Si se usó CUP adicional, considerarlo como efectivo
-                    if efectivo_cup > 0:
-                        metodo = "Efectivo"  # Se registra como efectivo en CUP
-                else:
-                    if metodo == "Mixto":
-                        total_pagado_moneda = efectivo + transferencia
-                    else:
-                        total_pagado_moneda = efectivo if metodo == "Efectivo" else transferencia
-                    total_pagado_cup = total_pagado_moneda
-
-                if total_pagado_cup < saldo_pendiente:
-                    nuevo_saldo = saldo_pendiente - total_pagado_cup
-                    pagada = 0
-                    fecha_pago = None
-                    mensaje_exito = f"Pago parcial registrado.\nSaldo restante: {nuevo_saldo:.2f} CUP"
-                    vuelto_cup = 0.0
-                    vuelto_moneda = 0.0
-                else:
-                    nuevo_saldo = 0.0
-                    pagada = 1
-                    fecha_pago = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    vuelto_cup = total_pagado_cup - saldo_pendiente
-                    if moneda != "CUP":
-                        try:
-                            vuelto_moneda = float(vuelto_moneda_var.get().strip() or "0")
-                            vuelto_moneda_cup = vuelto_moneda * tasa
-                            if vuelto_moneda_cup > vuelto_cup:
-                                self.mostrar_mensaje("error", "Error", "El vuelto en moneda no puede exceder el vuelto total.")
-                                return
-                        except ValueError:
-                            self.mostrar_mensaje("error", "Error", "Ingresa un número válido para el vuelto en moneda")
-                            return
-                    else:
-                        vuelto_moneda = 0.0
-                    mensaje_exito = f"Deuda pagada completamente.\nVuelto: {vuelto_cup:.2f} CUP" + (f" (en {moneda}: {vuelto_moneda:.2f})" if vuelto_moneda > 0 else "")
-
-                # Validar vuelto en CUP
-                if vuelto_cup > 0:
-                    fecha_actual_corta = datetime.datetime.now().strftime("%Y-%m-%d")
-                    efectivo_disponible = obtener_efectivo_disponible_cup(fecha_actual_corta)
-                    vuelto_cup_restante = vuelto_cup - (vuelto_moneda * tasa) if vuelto_moneda > 0 else vuelto_cup
-                    if vuelto_cup_restante > efectivo_disponible:
-                        self.mostrar_mensaje("error", "Error", 
+                # Lo único que no puede decidir el módulo: si la caja tiene
+                # ese dinero para devolverlo.
+                falta_en_caja = cd.vuelto_en_cup_a_entregar(cobro)
+                if falta_en_caja > 0:
+                    hoy = datetime.datetime.now().strftime("%Y-%m-%d")
+                    disponible = obtener_efectivo_disponible_cup(hoy)
+                    if falta_en_caja > disponible:
+                        self.mostrar_mensaje(
+                            "error", "Error",
                             f"No hay suficiente efectivo en caja para el vuelto.\n"
-                            f"Vuelto requerido: {vuelto_cup_restante:.2f} CUP\n"
-                            f"Efectivo disponible: {efectivo_disponible:.2f} CUP")
+                            f"Vuelto requerido: {falta_en_caja:.2f} CUP\n"
+                            f"Efectivo disponible: {disponible:.2f} CUP")
                         return
 
-                # Construir mensaje de confirmación
-                mensaje_confirmacion = f"Confirmar pago de deuda:\nMonto total: {total_pagado_cup:.2f} CUP\n"
-                if moneda != "CUP":
-                    mensaje_confirmacion += f"  - {efectivo:.2f} {moneda} (tasa {tasa:.2f}) = {efectivo * tasa:.2f} CUP\n"
-                    if efectivo_cup > 0:
-                        mensaje_confirmacion += f"  - {efectivo_cup:.2f} CUP (efectivo adicional)\n"
+                mensaje_confirmacion = (
+                    f"Confirmar pago de deuda:\n"
+                    f"Monto total: {cobro.total_pagado_cup:.2f} CUP\n")
+                if abono.en_divisa:
+                    mensaje_confirmacion += (
+                        f"  - {cobro.efectivo:.2f} {cobro.moneda} "
+                        f"(tasa {cobro.tasa:.2f}) = {cobro.efectivo * cobro.tasa:.2f} CUP\n")
+                    if cobro.efectivo_cup > 0:
+                        mensaje_confirmacion += (
+                            f"  - {cobro.efectivo_cup:.2f} CUP (efectivo adicional)\n")
                 else:
-                    mensaje_confirmacion += f"Método: {metodo}\n"
-                    if metodo == "Mixto":
-                        mensaje_confirmacion += f"  - Efectivo: {efectivo:.2f} CUP\n"
-                        mensaje_confirmacion += f"  - Transferencia: {transferencia:.2f} CUP\n"
+                    mensaje_confirmacion += f"Método: {cobro.metodo}\n"
+                    if cobro.metodo == cd.MIXTO:
+                        mensaje_confirmacion += f"  - Efectivo: {cobro.efectivo:.2f} CUP\n"
+                        mensaje_confirmacion += f"  - Transferencia: {cobro.transferencia:.2f} CUP\n"
                     else:
-                        mensaje_confirmacion += f"Monto: {total_pagado_moneda:.2f} CUP\n"
-                
+                        mensaje_confirmacion += f"Monto: {cobro.total_pagado_moneda:.2f} CUP\n"
                 mensaje_confirmacion += f"Saldo pendiente original: {saldo_pendiente:.2f} CUP\n"
-                mensaje_confirmacion += f"{'Pago parcial' if pagada == 0 else 'Pago total'}\n"
-                if vuelto_cup > 0:
-                    mensaje_confirmacion += f"Vuelto: {vuelto_cup:.2f} CUP" + (f" (en {moneda}: {vuelto_moneda:.2f})" if vuelto_moneda > 0 else "")
-                
+                mensaje_confirmacion += f"{'Pago parcial' if cobro.pagada == 0 else 'Pago total'}\n"
+                if cobro.vuelto_cup > 0:
+                    mensaje_confirmacion += f"Vuelto: {cobro.vuelto_cup:.2f} CUP"
+                    if cobro.vuelto_moneda > 0:
+                        mensaje_confirmacion += f" (en {cobro.moneda}: {cobro.vuelto_moneda:.2f})"
+
                 if not self.mostrar_mensaje("yesno", "Confirmar", mensaje_confirmacion):
                     return
 
                 try:
-                    # Actualizar observaciones de la venta
-                    observaciones = obs_actual or ""
-                    if pagada == 1:
-                        observaciones += f" | Pagada totalmente (abonado {total_pagado_cup:.2f} CUP)"
-                    else:
-                        observaciones += f" | Pago parcial de {total_pagado_cup:.2f} CUP, saldo restante {nuevo_saldo:.2f} CUP"
-                    
-                    metodo_pago_real = metodo if metodo != "Mixto" else "Mixto"
-                    if moneda != "CUP" and efectivo_cup > 0:
-                        metodo_pago_real = "Mixto (USD+CUP)"
+                    fecha_pago = (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                  if cobro.pagada == 1 else None)
 
                     exito_cobro, msg_cobro = registrar_cobro_deuda_en_db(venta_id, {
-                        "moneda": moneda,
-                        "tasa": tasa,
-                        "metodo": metodo,
-                        "efectivo": efectivo,
-                        "transferencia": transferencia,
-                        "efectivo_cup": efectivo_cup,
-                        "vuelto_cup": vuelto_cup,
-                        "vuelto_moneda": vuelto_moneda,
-                        "total_pagado_moneda": total_pagado_moneda,
-                        "total_pagado_cup": total_pagado_cup,
-                        "nuevo_saldo": nuevo_saldo,
-                        "pagada": pagada,
+                        "moneda": cobro.moneda,
+                        "tasa": cobro.tasa,
+                        "metodo": cobro.metodo,
+                        "efectivo": cobro.efectivo,
+                        "transferencia": cobro.transferencia,
+                        "efectivo_cup": cobro.efectivo_cup,
+                        "vuelto_cup": cobro.vuelto_cup,
+                        "vuelto_moneda": cobro.vuelto_moneda,
+                        "total_pagado_moneda": cobro.total_pagado_moneda,
+                        "total_pagado_cup": cobro.total_pagado_cup,
+                        "nuevo_saldo": cobro.nuevo_saldo,
+                        "pagada": cobro.pagada,
                         "fecha_pago": fecha_pago,
-                        "metodo_pago_real": metodo_pago_real,
-                        "observaciones": observaciones.strip(),
+                        "metodo_pago_real": cobro.metodo_pago_real,
+                        "observaciones": cd.observaciones_del_cobro(obs_actual, cobro).strip(),
                     })
                     if not exito_cobro:
                         raise Exception(msg_cobro)
 
-                    self.mostrar_mensaje("info", "Éxito", mensaje_exito)
+                    self.mostrar_mensaje("info", "Éxito", cd.resumen_del_cobro(cobro))
                     ventana.destroy()
                     self.cargar_ventas()
                     for item in self.tabla_detalle.get_children():
                         self.tabla_detalle.delete(item)
-                    self.frame_detalle_venta.config(text="Detalle")
+                    self.frame_detalle_venta.config(text="DETALLE")
                     self.label_info.config(text="Selecciona un registro de la lista para ver detalle")
                     self.actualizar_saldo_cambio()
                     if self.panel_corte_visible:
@@ -423,6 +388,7 @@ class DialogoDeudaMixin:
                     self.mostrar_mensaje("error", "Error", f"Error al procesar el pago: {str(e)}")
             except Exception as e:
                 self.mostrar_mensaje("error", "Error", f"Error inesperado: {str(e)}")
+
 
         def cancelar_pago():
             ventana.destroy()

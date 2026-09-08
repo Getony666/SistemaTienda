@@ -149,8 +149,10 @@ class QueRutasEscriben(unittest.TestCase):
         encontradas = set()
         for ruta in app.routes:
             camino = getattr(ruta, "path", "")
-            if camino.startswith("/cobro"):
-                continue  # aritmética pura, no toca la base
+            # /cobro es aritmética pura y /simular sólo consulta y calcula:
+            # son POST porque reciben datos, no porque escriban.
+            if camino.startswith("/cobro") or camino.endswith("/simular"):
+                continue
             for metodo in getattr(ruta, "methods", set()):
                 if metodo in ("POST", "PUT", "PATCH", "DELETE"):
                     encontradas.add((metodo, camino))
@@ -334,6 +336,54 @@ class LaApiEscribeDeVerdad(unittest.TestCase):
         r = self.cliente.post("/cambio", json={
             "tipo": "compra", "moneda": "USD", "cantidad": 10.0, "tasa": 400.0})
         self.assertEqual(r.status_code, 201, r.text)
+
+    # ----------------------------------------------------------- deudas
+
+    def _id_de_una_deuda(self):
+        for v in self.cliente.get("/ventas", params={"tipo": "deudas"}).json():
+            if v.get("detalle_extra", {}).get("pagada") == 0:
+                return v["id"], v["detalle_extra"]["saldo_pendiente"]
+        self.skipTest("no hay deudas pendientes en la copia")
+
+    def test_simular_un_abono_no_guarda_nada(self):
+        venta_id, saldo = self._id_de_una_deuda()
+        r = self.cliente.post(f"/deudas/{venta_id}/simular",
+                              json={"efectivo": saldo / 2})
+        self.assertEqual(r.status_code, 200, r.text)
+        d = r.json()
+        self.assertEqual(d["pagada"], 0)
+        self.assertAlmostEqual(d["nuevo_saldo"], saldo / 2)
+
+        # y la deuda sigue igual
+        _, saldo_despues = self._id_de_una_deuda()
+        self.assertAlmostEqual(saldo_despues, saldo)
+
+    def test_un_abono_parcial_deja_la_deuda_abierta(self):
+        venta_id, saldo = self._id_de_una_deuda()
+        r = self.cliente.post(f"/deudas/{venta_id}/cobros", json={"efectivo": 100.0})
+        self.assertEqual(r.status_code, 201, r.text)
+        self.assertEqual(r.json()["pagada"], 0)
+        self.assertAlmostEqual(r.json()["nuevo_saldo"], saldo - 100.0)
+
+    def test_no_se_puede_cobrar_una_venta_que_no_es_deuda(self):
+        r = self.cliente.post("/deudas/999999/cobros", json={"efectivo": 10.0})
+        self.assertEqual(r.status_code, 404)
+
+    def test_el_mixto_necesita_las_dos_partes(self):
+        venta_id, _ = self._id_de_una_deuda()
+        r = self.cliente.post(f"/deudas/{venta_id}/simular",
+                              json={"metodo": "Mixto", "efectivo": 100.0,
+                                    "transferencia": 0.0})
+        self.assertEqual(r.status_code, 422)
+        self.assertEqual(r.json()["detail"], "mixto_necesita_ambos")
+
+    def test_en_divisa_solo_se_admite_efectivo(self):
+        venta_id, _ = self._id_de_una_deuda()
+        r = self.cliente.post(f"/deudas/{venta_id}/simular",
+                              json={"moneda": "USD", "tasa": 400.0,
+                                    "metodo": "Transferencia", "efectivo": 1.0})
+        self.assertEqual(r.status_code, 422)
+        self.assertEqual(r.json()["detail"], "divisa_solo_efectivo")
 
 
 if __name__ == "__main__":
