@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { enviar } from "./api";
 
-// Los siete botones del panel, con el mismo color que en el diseño aprobado.
+// Salida de Inventario y Merma ya no están aquí: se marcan como etiquetas en
+// la sección de Pago, sobre el carrito entero. Quedan cinco, en dos filas.
 const ACCIONES = [
   { id: "nuevo", texto: "Nuevo Producto", color: "teal" },
-  { id: "entrada", texto: "Entrada de Efectivo", color: "verde" },
-  { id: "salida_inv", texto: "Salida de Inventario", color: "naranja" },
   { id: "actualizar", texto: "Actualizar Producto", color: "ocre" },
-  { id: "salida_efe", texto: "Salida de Efectivo", color: "rojo" },
-  { id: "merma", texto: "Merma", color: "morado" },
   { id: "eliminar", texto: "Eliminar Producto", color: "rojo" },
+  { id: "entrada", texto: "Entrada de Efectivo", color: "verde" },
+  { id: "salida_efe", texto: "Salida de Efectivo", color: "rojo" },
 ];
 
 const vacio = {
@@ -17,7 +16,7 @@ const vacio = {
   stock: "", proveedor: "", tipo_producto: "unidad", unidad_medida: "unidad",
   fecha_vencimiento: "",
   moneda: "CUP", monto: "", descripcion: "",
-  producto_id: "", cantidad: "", precio_costo: "", motivo: "",
+  producto_id: "",
 };
 
 export default function PanelAcciones({ productos, alCambiar }) {
@@ -82,19 +81,6 @@ export default function PanelAcciones({ productos, alCambiar }) {
         respuesta = await enviar("/caja/salidas", {
           moneda: campos.moneda, monto: numero(campos.monto),
           descripcion: campos.descripcion,
-        });
-      } else if (abierta === "salida_inv") {
-        respuesta = await enviar("/inventario/salidas", {
-          producto_id: numero(campos.producto_id),
-          cantidad: numero(campos.cantidad),
-          precio_costo: numero(campos.precio_costo),
-          motivo: campos.motivo || "Salida a trabajador",
-        });
-      } else if (abierta === "merma") {
-        respuesta = await enviar("/inventario/mermas", {
-          producto_id: numero(campos.producto_id),
-          cantidad: numero(campos.cantidad),
-          motivo: campos.motivo || "Merma",
         });
       }
       setAviso({ tipo: "bien", texto: respuesta?.mensaje ?? "Hecho" });
@@ -180,27 +166,6 @@ export default function PanelAcciones({ productos, alCambiar }) {
     ),
     entrada: montoYMoneda,
     salida_efe: montoYMoneda,
-    salida_inv: (
-      <>
-        {listaProductos}
-        <label className="campo"><span>Cantidad</span>
-          <input className="numero" value={campos.cantidad} onChange={set("cantidad")} /></label>
-        <label className="campo"><span>Precio costo</span>
-          <input className="numero" value={campos.precio_costo} onChange={set("precio_costo")} /></label>
-        <label className="campo ancho"><span>Motivo</span>
-          <input value={campos.motivo} onChange={set("motivo")}
-                 placeholder="Salida a trabajador" /></label>
-      </>
-    ),
-    merma: (
-      <>
-        {listaProductos}
-        <label className="campo"><span>Cantidad</span>
-          <input className="numero" value={campos.cantidad} onChange={set("cantidad")} /></label>
-        <label className="campo ancho"><span>Motivo</span>
-          <input value={campos.motivo} onChange={set("motivo")} placeholder="Merma" /></label>
-      </>
-    ),
   };
 
   const titulo = ACCIONES.find((a) => a.id === abierta)?.texto;

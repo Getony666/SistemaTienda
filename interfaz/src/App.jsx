@@ -7,10 +7,10 @@ import PanelCambio from "./PanelCambio";
 import PanelCorte from "./PanelCorte";
 
 const PANELES = [
-  { id: "ventas", texto: "Ventas" },
-  { id: "historial", texto: "Historial" },
-  { id: "cambio", texto: "Cambio de Divisa" },
-  { id: "corte", texto: "Corte de Caja" },
+  { id: "ventas", icono: "🛒", texto: "Ventas" },
+  { id: "historial", icono: "🕒", texto: "Historial" },
+  { id: "cambio", icono: "💱", texto: "Cambio de Divisa" },
+  { id: "corte", icono: "🧮", texto: "Corte de Caja" },
 ];
 
 export default function App() {
@@ -36,7 +36,7 @@ export default function App() {
             aria-current={panel === p.id ? "page" : undefined}
             onClick={() => setPanel(p.id)}
           >
-            {p.texto}
+            <span className="ico" aria-hidden="true">{p.icono}</span>{p.texto}
           </button>
         ))}
         <span className="marca">MiTienda</span>

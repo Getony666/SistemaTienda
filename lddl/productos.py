@@ -72,8 +72,11 @@ def eliminar_producto(id):
 
 def buscar_productos(texto_busqueda):
     with consulta() as (_conexion, cursor):
+        # El precio de compra va al final a propósito: los paneles de tkinter
+        # leen estas tuplas por posición (p[0] a p[5]) y así no se enteran.
         cursor.execute('''
-            SELECT id, nombre, precio_venta, stock, tipo_producto, unidad_medida
+            SELECT id, nombre, precio_venta, stock, tipo_producto, unidad_medida,
+                   precio_compra
             FROM productos
             ORDER BY nombre
         ''')

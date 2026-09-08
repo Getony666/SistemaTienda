@@ -47,7 +47,12 @@ from .caja import (
 )
 from .rutas import consulta
 from .historial import revertir_registro
-from .inventario import registrar_merma, registrar_salida
+from .inventario import (
+    registrar_merma,
+    registrar_merma_de_carrito,
+    registrar_salida,
+    registrar_salida_de_carrito,
+)
 from .productos import actualizar_producto, agregar_producto, buscar_productos, eliminar_producto
 from .ventas_datos import (
     obtener_ventas,
@@ -94,7 +99,8 @@ def salud():
 class Producto(BaseModel):
     id: int
     nombre: str
-    precio: float
+    precio: float = Field(..., description="Precio de venta")
+    costo: float = Field(..., description="Precio de compra; con él se valoran las salidas")
     stock: float
     tipo: str
     unidad: str
@@ -104,7 +110,8 @@ class Producto(BaseModel):
 def listar_productos(buscar: str = Query("", description="Texto a buscar; vacío devuelve todo")):
     """Productos del inventario, opcionalmente filtrados por nombre."""
     return [
-        Producto(id=p[0], nombre=p[1], precio=p[2], stock=p[3], tipo=p[4], unidad=p[5])
+        Producto(id=p[0], nombre=p[1], precio=p[2], stock=p[3], tipo=p[4],
+                 unidad=p[5], costo=p[6])
         for p in buscar_productos(buscar)
     ]
 
@@ -449,6 +456,45 @@ class MermaEntrante(BaseModel):
 def crear_merma(merma: MermaEntrante):
     """Da de baja producto perdido o dañado."""
     return _resultado(registrar_merma(**merma.model_dump()))
+
+
+class LineaDeCarrito(BaseModel):
+    producto_id: int
+    cantidad: float = Field(..., gt=0)
+
+
+class CarritoDeInventario(BaseModel):
+    """Varios productos que salen del almacén de una vez.
+
+    El precio de costo no viaja: lo pone el almacén al registrarlo, para que
+    nadie pueda valorar una salida por debajo de lo que costó.
+    """
+
+    lineas: list[LineaDeCarrito] = Field(..., min_length=1)
+    motivo: str = ""
+
+
+@app.post("/inventario/salidas/carrito", tags=["inventario"], status_code=201)
+def crear_salida_de_carrito(carrito: CarritoDeInventario):
+    """Saca un carrito entero del almacén, a precio de costo.
+
+    Genera una sola deuda por el total, no una por producto. O entran todas
+    las líneas o no entra ninguna.
+    """
+    lineas = [linea.model_dump() for linea in carrito.lineas]
+    return _resultado(registrar_salida_de_carrito(
+        lineas, carrito.motivo or "Salida a trabajador"))
+
+
+@app.post("/inventario/mermas/carrito", tags=["inventario"], status_code=201)
+def crear_merma_de_carrito(carrito: CarritoDeInventario):
+    """Da de baja un carrito entero sin cobrar nada.
+
+    Cada línea queda como su propia merma, para que se vean y se reviertan por
+    separado, pero se guardan todas juntas o ninguna.
+    """
+    lineas = [linea.model_dump() for linea in carrito.lineas]
+    return _resultado(registrar_merma_de_carrito(lineas, carrito.motivo or "Merma"))
 
 
 # ------------------------------------------------------------------- caja

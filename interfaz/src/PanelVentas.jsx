@@ -2,10 +2,38 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { dinero, cantidad as fmtCantidad, enviar } from "./api";
 import PanelAcciones from "./PanelAcciones";
 
+// El carrito se llena igual siempre; lo que cambia es qué se hace con él.
+const MODOS = {
+  venta: {
+    precio: (l) => l.precio,
+    boton: "Finalizar venta",
+    apunte: "",
+  },
+  salida: {
+    precio: (l) => l.costo,
+    boton: "Registrar salida",
+    apunte: "a precio de costo",
+    aviso: "Salida de inventario. Todo el carrito se valora a precio de costo y se " +
+           "descuenta del almacén. Genera la deuda del trabajador. No se cobra al cliente.",
+    motivoPorDefecto: "Salida a trabajador",
+  },
+  merma: {
+    precio: () => 0,
+    boton: "Registrar merma",
+    apunte: "sin cobro",
+    aviso: "Merma. El carrito se descuenta del almacén sin cobrar nada. " +
+           "Ni caja, ni deuda, ni vuelto: sólo baja el inventario.",
+    motivoPorDefecto: "Merma",
+  },
+};
+
 export default function PanelVentas({ productos, recargarProductos }) {
   const [busqueda, setBusqueda] = useState("");
   const [marcado, setMarcado] = useState(0);
   const [carrito, setCarrito] = useState([]);
+
+  const [modo, setModo] = useState("venta");
+  const [motivo, setMotivo] = useState("");
 
   const [soloTransferencia, setSoloTransferencia] = useState(false);
   const [mensajeria, setMensajeria] = useState(false);
@@ -24,9 +52,13 @@ export default function PanelVentas({ productos, recargarProductos }) {
   const campoBusqueda = useRef(null);
   const filasRef = useRef([]);
 
+  const esVenta = modo === "venta";
+  const reglas = MODOS[modo];
+
+  const precioDe = (linea) => reglas.precio(linea);
   const total = useMemo(
-    () => carrito.reduce((s, l) => s + l.cantidad * l.precio, 0),
-    [carrito]
+    () => carrito.reduce((s, l) => s + l.cantidad * precioDe(l), 0),
+    [carrito, modo]
   );
 
   const resultados = useMemo(() => {
@@ -40,9 +72,27 @@ export default function PanelVentas({ productos, recargarProductos }) {
   useEffect(() => { campoBusqueda.current?.focus(); }, []);
   useEffect(() => { setMarcado(0); }, [busqueda]);
 
+  // Salida y merma no se cobran: al marcarlas se apaga todo lo del pago.
+  const cambiarModo = (nuevo) => {
+    const destino = modo === nuevo ? "venta" : nuevo;
+    setModo(destino);
+    setMotivo(destino === "venta" ? "" : MODOS[destino].motivoPorDefecto);
+    if (destino !== "venta") {
+      setSoloTransferencia(false); setMensajeria(false); setDeuda(false);
+      setEfectivo(""); setTransferencia(""); setMoneda("CUP"); setTasa("1.00");
+      setVuelto(null);
+    }
+    setAviso(null);
+  };
+
+  const marcarPago = (poner) => {
+    if (!esVenta) return;
+    poner();
+  };
+
   // El vuelto se lo pedimos a la misma función que usa la caja de tkinter.
   useEffect(() => {
-    if (total <= 0) { setVuelto(null); return; }
+    if (!esVenta || total <= 0) { setVuelto(null); return; }
     const id = setTimeout(async () => {
       try {
         setVuelto(await enviar("/cobro/vuelto", {
@@ -58,7 +108,7 @@ export default function PanelVentas({ productos, recargarProductos }) {
       }
     }, 120);
     return () => clearTimeout(id);
-  }, [total, moneda, tasa, efectivo, transferencia, soloTransferencia]);
+  }, [esVenta, total, moneda, tasa, efectivo, transferencia, soloTransferencia]);
 
   const agregar = (p) => {
     if (p.stock <= 0) {
@@ -77,7 +127,8 @@ export default function PanelVentas({ productos, recargarProductos }) {
         return copia;
       }
       return [...actual, {
-        id: p.id, nombre: p.nombre, cantidad: 1, precio: p.precio,
+        id: p.id, nombre: p.nombre, cantidad: 1,
+        precio: p.precio, costo: p.costo,
         tipo: p.tipo, unidad: p.unidad, stock: p.stock,
       }];
     });
@@ -102,28 +153,44 @@ export default function PanelVentas({ productos, recargarProductos }) {
     setCarrito([]); setEfectivo(""); setTransferencia("");
     setSoloTransferencia(false); setMensajeria(false); setDeuda(false);
     setObservaciones(""); setMoneda("CUP"); setTasa("1.00");
-    setVuelto(null); campoBusqueda.current?.focus();
+    setModo("venta"); setMotivo(""); setVuelto(null);
+    campoBusqueda.current?.focus();
   };
 
-  async function finalizar() {
+  const lineasParaInventario = () =>
+    carrito.map(({ id, cantidad }) => ({ producto_id: id, cantidad }));
+
+  async function confirmar() {
     setGuardando(true);
     try {
-      const r = await enviar("/ventas", {
-        carrito: carrito.map(({ id, nombre, cantidad, precio, tipo, unidad }) =>
-          ({ id, nombre, cantidad, precio, tipo, unidad })),
-        pago: {
-          total_cup: total,
-          moneda,
-          tasa: Number(tasa) || 1,
-          efectivo: Number(efectivo) || 0,
-          transferencia: Number(transferencia) || 0,
-          solo_transferencia: soloTransferencia,
-        },
-        es_deuda: deuda,
-        es_mensajeria: mensajeria,
-        observaciones,
+      let r;
+      if (modo === "salida") {
+        r = await enviar("/inventario/salidas/carrito",
+                         { lineas: lineasParaInventario(), motivo });
+      } else if (modo === "merma") {
+        r = await enviar("/inventario/mermas/carrito",
+                         { lineas: lineasParaInventario(), motivo });
+      } else {
+        r = await enviar("/ventas", {
+          carrito: carrito.map(({ id, nombre, cantidad, precio, tipo, unidad }) =>
+            ({ id, nombre, cantidad, precio, tipo, unidad })),
+          pago: {
+            total_cup: total,
+            moneda,
+            tasa: Number(tasa) || 1,
+            efectivo: Number(efectivo) || 0,
+            transferencia: Number(transferencia) || 0,
+            solo_transferencia: soloTransferencia,
+          },
+          es_deuda: deuda,
+          es_mensajeria: mensajeria,
+          observaciones,
+        });
+      }
+      setAviso({
+        tipo: "bien",
+        texto: r.mensaje ?? `Venta ${r.venta_id} guardada. Vuelto: ${r.vuelto_texto}`,
       });
-      setAviso({ tipo: "bien", texto: `Venta ${r.venta_id} guardada. Vuelto: ${r.vuelto_texto}` });
       limpiar();
       recargarProductos();
     } catch (e) {
@@ -160,7 +227,8 @@ export default function PanelVentas({ productos, recargarProductos }) {
     }
   };
 
-  const puedeFinalizar = carrito.length > 0 && !guardando && (deuda || vuelto?.cubre);
+  const puedeConfirmar = carrito.length > 0 && !guardando &&
+    (!esVenta || deuda || vuelto?.cubre);
 
   return (
     <div className="cuerpo">
@@ -203,7 +271,7 @@ export default function PanelVentas({ productos, recargarProductos }) {
                         onKeyDown={(e) => teclasResultado(e, i)}
                         onDoubleClick={() => agregar(p)}>
                       <td>{p.nombre}</td>
-                      <td className="derecha">{dinero(p.precio)}</td>
+                      <td className="derecha">{dinero(esVenta ? p.precio : p.costo)}</td>
                       <td className="centro">{fmtCantidad(p.stock)}</td>
                       <td className="derecha">
                         <button className="boton verde" onClick={() => agregar(p)}>Añadir</button>
@@ -233,13 +301,15 @@ export default function PanelVentas({ productos, recargarProductos }) {
                   <tr key={l.id}>
                     <td>{l.nombre}</td>
                     <td className="centro">
-                      <input className="numero" style={{ width: 78 }} type="number"
+                      <input className="numero" style={{ width: 74 }} type="number"
                              min="0" step={l.tipo === "peso" ? "0.1" : "1"}
                              value={l.cantidad}
                              onChange={(e) => cambiarCantidad(l.id, e.target.value)} />
                     </td>
-                    <td className="derecha">{dinero(l.precio)}</td>
-                    <td className="derecha">{dinero(l.cantidad * l.precio)}</td>
+                    <td className="derecha">
+                      {modo === "merma" ? "—" : dinero(precioDe(l))}
+                    </td>
+                    <td className="derecha">{dinero(l.cantidad * precioDe(l))}</td>
                     <td className="derecha">
                       <button className="quitar" title="Quitar" onClick={() => quitar(l.id)}>✕</button>
                     </td>
@@ -249,6 +319,7 @@ export default function PanelVentas({ productos, recargarProductos }) {
             </table>
           )}
           <div className="total">
+            {reglas.apunte && <span className="apunte">{reglas.apunte}</span>}
             <span className="etiqueta">TOTAL</span>
             <span className="cifra">{dinero(total)}</span>
             <span className="moneda">CUP</span>
@@ -259,15 +330,40 @@ export default function PanelVentas({ productos, recargarProductos }) {
           <h2>Pago</h2>
 
           <div className="pastillas">
-            <button className="pastilla" aria-pressed={soloTransferencia}
-                    onClick={() => setSoloTransferencia((v) => !v)}>Transferencia</button>
-            <button className="pastilla" aria-pressed={mensajeria}
-                    onClick={() => setMensajeria((v) => !v)}>Mensajería</button>
-            <button className="pastilla" aria-pressed={deuda}
-                    onClick={() => setDeuda((v) => !v)}>Deuda</button>
+            <button className="pastilla" aria-pressed={soloTransferencia} disabled={!esVenta}
+                    onClick={() => marcarPago(() => setSoloTransferencia((v) => !v))}>
+              Transferencia
+            </button>
+            <button className="pastilla" aria-pressed={mensajeria} disabled={!esVenta}
+                    onClick={() => marcarPago(() => setMensajeria((v) => !v))}>
+              Mensajería
+            </button>
+            <button className="pastilla" aria-pressed={deuda} disabled={!esVenta}
+                    onClick={() => marcarPago(() => setDeuda((v) => !v))}>
+              Deuda
+            </button>
+            <button className="pastilla naranja" aria-pressed={modo === "salida"}
+                    onClick={() => cambiarModo("salida")}>
+              Salida
+            </button>
+            <button className="pastilla morada" aria-pressed={modo === "merma"}
+                    onClick={() => cambiarModo("merma")}>
+              Merma
+            </button>
           </div>
 
-          {deuda && (
+          {!esVenta && (
+            <>
+              <div className={`aviso-modo ${modo}`}>{reglas.aviso}</div>
+              <div className="fila" style={{ marginTop: 12 }}>
+                <label htmlFor="motivo">Motivo</label>
+                <input id="motivo" style={{ flex: 1 }} value={motivo}
+                       onChange={(e) => setMotivo(e.target.value)} />
+              </div>
+            </>
+          )}
+
+          {esVenta && deuda && (
             <div className="fila" style={{ marginBottom: 12 }}>
               <label htmlFor="obs">Observaciones</label>
               <input id="obs" style={{ flex: 1 }} value={observaciones}
@@ -275,7 +371,7 @@ export default function PanelVentas({ productos, recargarProductos }) {
             </div>
           )}
 
-          {!deuda && !soloTransferencia && (
+          {esVenta && !deuda && !soloTransferencia && (
             <>
               <div className="fila" style={{ marginBottom: 10 }}>
                 <label htmlFor="moneda">Pago en</label>
@@ -307,7 +403,7 @@ export default function PanelVentas({ productos, recargarProductos }) {
             </>
           )}
 
-          {!deuda && total > 0 && vuelto && (
+          {esVenta && !deuda && total > 0 && vuelto && (
             <div className="vuelto">
               <strong style={{ color: "var(--suave)", fontSize: 13 }}>Vuelto</strong>
               {vuelto.cubre
@@ -320,11 +416,11 @@ export default function PanelVentas({ productos, recargarProductos }) {
           {aviso && <div className={`aviso ${aviso.tipo}`} style={{ marginTop: 12 }}>{aviso.texto}</div>}
 
           <div className="finales">
-            <button className="boton verde" disabled={!puedeFinalizar} onClick={finalizar}>
-              {guardando ? "Guardando…" : "Finalizar venta"}
+            <button className="boton verde" disabled={!puedeConfirmar} onClick={confirmar}>
+              {guardando ? "Guardando…" : reglas.boton}
             </button>
             <button className="boton rojo" disabled={!carrito.length} onClick={limpiar}>
-              Cancelar venta
+              Cancelar
             </button>
           </div>
         </section>

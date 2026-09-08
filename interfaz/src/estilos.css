@@ -266,7 +266,7 @@ input.numero { font-variant-numeric: tabular-nums; text-align: right; }
 @keyframes entrar { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 /* ===================================================================
-   Paneles aÃ±adidos: Acciones, Historial, Cambio de Divisa y Corte
+   Paneles añadidos: Acciones, Historial, Cambio de Divisa y Corte
    =================================================================== */
 
 .cuerpo.una-columna { grid-template-columns: minmax(0, 1fr); }
@@ -368,7 +368,7 @@ input.numero { font-variant-numeric: tabular-nums; text-align: right; }
 .resumen-fila.divisas .importe { font-size: 15px; }
 
 
-/* ------------------------------------------------- diÃ¡logo de deuda */
+/* ------------------------------------------------- diálogo de deuda */
 
 .velo {
   position: fixed; inset: 0; z-index: 20;
@@ -413,4 +413,58 @@ input.numero { font-variant-numeric: tabular-nums; text-align: right; }
 .resumen-deuda .saldo strong { color: var(--ocre); }
 
 .pastilla:disabled { opacity: .4; cursor: not-allowed; }
+
+
+/* ============================================================
+   Salida y Merma como modos del carrito, filas mas finas
+   e iconos en la barra.
+   ============================================================ */
+
+/* --- filas mas finas en Buscar productos y Carrito --- */
+.tabla { font-size: 13px; }
+.tabla th { padding: 4px 8px; font-size: 10.5px; }
+.tabla td { padding: 3px 8px; }
+.desplazable { max-height: 168px; }
+
+/* --- iconos de los modulos en la barra --- */
+.nav button .ico { margin-right: 7px; font-size: 14px; }
+
+/* --- botonera de cinco: tres arriba, dos abajo repartidos --- */
+.acciones { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.acciones .boton { grid-column: span 2; }
+
+/* --- pastillas de Salida y Merma: cada modo con su color --- */
+.pastilla.naranja[aria-pressed="true"] {
+  background: var(--naranja); border-color: var(--naranja);
+  box-shadow: 0 4px 12px -4px rgba(210, 105, 30, .5);
+}
+.pastilla.morada[aria-pressed="true"] {
+  background: var(--morado); border-color: var(--morado);
+  box-shadow: 0 4px 12px -4px rgba(123, 79, 163, .5);
+}
+
+/* --- aviso de que el carrito no se esta cobrando --- */
+.aviso-modo {
+  padding: 11px 14px;
+  border-radius: var(--radio);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: entrar 160ms ease-out;
+}
+.aviso-modo.salida {
+  background: rgba(210, 105, 30, .10);
+  border: 1px solid rgba(210, 105, 30, .28);
+  color: #8A4512;
+}
+.aviso-modo.merma {
+  background: rgba(123, 79, 163, .10);
+  border: 1px solid rgba(123, 79, 163, .28);
+  color: #5A3579;
+}
+
+/* --- apunte junto al TOTAL cuando no es una venta corriente --- */
+.total .apunte {
+  font-size: 11.5px; color: var(--tenue); font-style: italic; margin-right: auto;
+}
+.total .etiqueta { margin-left: auto; }
 

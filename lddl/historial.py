@@ -192,6 +192,30 @@ def revertir_registro(id_reg, tipo):
             venta_id = detalles.get("venta_id")
             ref_id = detalles.get("ref_id")
 
+            # Una salida puede llevar varios productos. Las nuevas guardan la
+            # lista en "lineas"; las de antes, un solo producto suelto. Se
+            # atienden las dos formas para que el historial viejo siga
+            # revirtiéndose igual.
+            lineas = detalles.get("lineas")
+            if lineas:
+                for linea in lineas:
+                    cursor.execute("UPDATE productos SET stock = stock + ? WHERE id = ?",
+                                   (linea["cantidad"], linea["producto_id"]))
+                    if linea.get("ref_id"):
+                        cursor.execute("DELETE FROM salidas_inventario WHERE id = ?",
+                                       (linea["ref_id"],))
+                if venta_id:
+                    cursor.execute("SELECT id FROM ventas WHERE id = ? AND metodo_pago = 'Salida'",
+                                   (venta_id,))
+                    if cursor.fetchone():
+                        cursor.execute("DELETE FROM cobros_deudas WHERE venta_id = ?", (venta_id,))
+                        cursor.execute("DELETE FROM detalles_venta WHERE venta_id = ?", (venta_id,))
+                        cursor.execute("DELETE FROM ventas WHERE id = ?", (venta_id,))
+                cursor.execute("DELETE FROM historial WHERE id = ?", (id_reg,))
+                conn.commit()
+                conn.close()
+                return True, f"Salida eliminada: {len(lineas)} producto(s) devueltos al almacén"
+
             if producto_id and cantidad:
                 cursor.execute("UPDATE productos SET stock = stock + ? WHERE id = ?", (cantidad, producto_id))
             if venta_id:
