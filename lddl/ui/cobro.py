@@ -5,6 +5,7 @@ por transferencia y mixtos, con vuelto en cualquiera de ellos."""
 
 import datetime
 
+from .. import calculo_cobro as cc
 from ..rutas import consulta
 from ..ventas_datos import registrar_venta_en_db
 
@@ -199,507 +200,212 @@ class CobroMixin:
             self.vuelto_var.set("0.00 CUP")
             self.vuelto_total_cup = 0.0
 
-    def _calcular_vuelto_interno(self, silencioso=False):
-        moneda = self.moneda_pago.get()
+    def _limpiar_zona_vuelto(self):
+        """Deja el bloque del vuelto a cero."""
+        self.vuelto_var.set("0.00")
+        self.label_vuelto_valor.config(text="0.00")
+        self.label_vuelto_moneda.config(text="CUP")
+        self.entry_vuelto_moneda.config(state="disabled")
+        self.vuelto_moneda_var.set("")
+        self.label_resto_cup.config(text="")
+        self.vuelto_total_cup = 0.0
 
+    def _calcular_vuelto_interno(self, silencioso=False):
+        """Recoge lo tecleado, pide el cálculo y pinta el resultado.
+
+        La aritmética vive en `lddl/calculo_cobro.py`. Aquí sólo queda leer
+        campos, decidir qué mostrar y el autorrelleno del CUP que falta, que
+        es comodidad de pantalla y no parte del cálculo.
+        """
         if self.transferencia_var.get() == 1:
             if not silencioso:
-                self.vuelto_var.set("0.00")
-                self.label_vuelto_valor.config(text="0.00")
-                self.label_vuelto_moneda.config(text="CUP")
-                self.entry_vuelto_moneda.config(state="disabled")
-                self.vuelto_moneda_var.set("")
-                self.label_resto_cup.config(text="")
-                self.vuelto_total_cup = 0.0
+                self._limpiar_zona_vuelto()
             return
 
         try:
             total_cup = float(self.total_var.get())
-
-            if moneda == "CUP":
-                pago_efectivo = (
-                    float(self.pagado_var.get())
-                    if self.pagado_var.get()
-                    else 0.0
-                )
-
-                pago_transferencia = float(
-                    self.pago_transferencia_var.get().strip() or "0"
-                )
-
-                total_pagado = pago_efectivo + pago_transferencia
-
-                if total_pagado < total_cup:
-                    self.vuelto_var.set("0.00")
-                    self.label_vuelto_valor.config(text="0.00")
-                    self.label_vuelto_moneda.config(text="CUP")
-                    self.entry_vuelto_moneda.config(state="disabled")
-                    self.vuelto_moneda_var.set("")
-                    self.label_resto_cup.config(text="")
-                    self.vuelto_total_cup = 0.0
-
-                    if pago_efectivo > 0 or pago_transferencia > 0:
-                        self.label_pago_efectivo_resto.config(
-                            text=f"Faltan {(total_cup - total_pagado):.2f} CUP"
-                        )
-                    else:
-                        self.label_pago_efectivo_resto.config(text="")
-
-                    return
-
-                vuelto_cup = total_pagado - total_cup
-                self.vuelto_total_cup = vuelto_cup
-
-                self.vuelto_var.set(f"{vuelto_cup:.2f}")
-                self.label_vuelto_valor.config(text=f"{vuelto_cup:.2f}")
-                self.label_vuelto_moneda.config(text="CUP")
-                self.entry_vuelto_moneda.config(state="disabled")
-                self.vuelto_moneda_var.set("")
-                self.label_resto_cup.config(text="")
-
-                if pago_efectivo > 0 and pago_transferencia > 0:
-                    self.label_pago_efectivo_resto.config(
-                        text=f"Efectivo: {pago_efectivo:.2f} | "
-                            f"Transferencia: {pago_transferencia:.2f}"
-                    )
-                elif pago_transferencia > 0:
-                    self.label_pago_efectivo_resto.config(
-                        text=f"Transferencia: {pago_transferencia:.2f}"
-                    )
-                elif pago_efectivo > 0:
-                    self.label_pago_efectivo_resto.config(
-                        text=f"Efectivo: {pago_efectivo:.2f}"
-                    )
-                else:
-                    self.label_pago_efectivo_resto.config(text="")
-
-                return
-
-            # ==========================================================
-            # PAGO EN DIVISA
-            # ==========================================================
-
-            tasa = float(self.tasa_cambio.get().strip() or "0")
-
-            if tasa <= 0:
-                if not silencioso:
-                    self.vuelto_var.set("0.00")
-                    self.label_vuelto_valor.config(text="0.00")
-                    self.label_vuelto_moneda.config(text="CUP")
-                    self.entry_vuelto_moneda.config(state="disabled")
-                    self.vuelto_moneda_var.set("")
-                    self.label_resto_cup.config(text="")
-                    self.vuelto_total_cup = 0.0
-                return
-
-            pago_divisa_text = self.pagado_var.get().strip()
-
-            if pago_divisa_text:
-                try:
-                    pago_divisa = float(pago_divisa_text)
-                except ValueError:
-                    pago_divisa = 0.0
+            if self.moneda_pago.get() == cc.CUP:
+                self._vuelto_en_cup(total_cup)
             else:
-                pago_divisa = 0.0
-
-            # ==========================================================
-            # LEER PAGOS ADICIONALES EN CUP
-            # ==========================================================
-
-            pago_cup_efectivo_text = (
-                self.pago_cup_adicional_var.get().strip()
-            )
-
-            pago_cup_transferencia_text = (
-                self.pago_transferencia_adicional_var.get().strip()
-            )
-
-            try:
-                pago_cup_efectivo = (
-                    float(pago_cup_efectivo_text)
-                    if pago_cup_efectivo_text
-                    else 0.0
-                )
-            except ValueError:
-                pago_cup_efectivo = 0.0
-
-                if pago_cup_efectivo_text and not silencioso:
-                    self.mostrar_mensaje(
-                        "error",
-                        "Error",
-                        "Ingresa un número válido para el pago en CUP efectivo"
-                    )
-                    self.pago_cup_adicional_var.set("")
-                    self._pago_cup_adicional_auto_valor = None
-                    return
-
-            try:
-                pago_cup_transferencia = (
-                    float(pago_cup_transferencia_text)
-                    if pago_cup_transferencia_text
-                    else 0.0
-                )
-            except ValueError:
-                pago_cup_transferencia = 0.0
-
-                if pago_cup_transferencia_text and not silencioso:
-                    self.mostrar_mensaje(
-                        "error",
-                        "Error",
-                        "Ingresa un número válido para el pago en CUP transferencia"
-                    )
-                    self.pago_transferencia_adicional_var.set("")
-                    return
-
-            # ==========================================================
-            # VALIDAR MONTOS NEGATIVOS
-            # ==========================================================
-
-            if pago_cup_efectivo < 0:
-                if not silencioso:
-                    self.mostrar_mensaje(
-                        "error",
-                        "Error",
-                        "El pago en CUP efectivo no puede ser negativo"
-                    )
-                    self.pago_cup_adicional_var.set("0.00")
-
-                self._pago_cup_adicional_auto_valor = None
-                return
-
-            if pago_cup_transferencia < 0:
-                if not silencioso:
-                    self.mostrar_mensaje(
-                        "error",
-                        "Error",
-                        "El pago en CUP transferencia no puede ser negativo"
-                    )
-                    self.pago_transferencia_adicional_var.set("0.00")
-
-                return
-
-            # ==========================================================
-            # CONVERSIÓN DE DIVISA A CUP
-            # ==========================================================
-
-            pago_divisa_cup = (
-                pago_divisa * tasa
-                if pago_divisa > 0
-                else 0.0
-            )
-
-            # ==========================================================
-            # IMPORTANTE:
-            #
-            # Si el valor actual del campo CUP coincide exactamente
-            # con el valor que el programa había generado
-            # automáticamente, sabemos que todavía es una sugerencia
-            # del sistema y no una entrada manual.
-            #
-            # Si la dependienta modificó el campo, deja de coincidir
-            # y lo consideramos un pago manual.
-            # ==========================================================
-
-            auto_valor = getattr(
-                self,
-                "_pago_cup_adicional_auto_valor",
-                None
-            )
-
-            cup_efectivo_es_automatico = (
-                auto_valor is not None
-                and pago_cup_efectivo_text == auto_valor
-            )
-
-            # ==========================================================
-            # CASO 1:
-            # EL PAGO EN DIVISA YA CUBRE EL TOTAL
-            #
-            # Ejemplo:
-            #
-            # Total:       5,000 CUP
-            # USD:         100
-            # Tasa:        60
-            #
-            # 100 x 60 = 6,000 CUP
-            #
-            # Por tanto NO necesitamos pago adicional en CUP.
-            # El exceso es vuelto.
-            # ==========================================================
-
-            if pago_divisa > 0 and pago_divisa_cup >= total_cup:
-
-                # Solo eliminamos el CUP si fue generado
-                # automáticamente por nosotros.
-                if cup_efectivo_es_automatico:
-                    self.pago_cup_adicional_var.set("")
-                    pago_cup_efectivo = 0.0
-                    pago_cup_efectivo_text = ""
-                    self._pago_cup_adicional_auto_valor = None
-
-                    # Si también existe una sugerencia automática
-                    # de transferencia, se limpia.
-                    if not pago_cup_transferencia_text:
-                        pago_cup_transferencia = 0.0
-
-                # Calcular nuevamente con los valores reales.
-                total_pagado_cup = (
-                    pago_divisa_cup
-                    + pago_cup_efectivo
-                    + pago_cup_transferencia
-                )
-
-            # ==========================================================
-            # CASO 2:
-            # LA DIVISA NO ALCANZA Y NO HAY CUP ADICIONAL
-            #
-            # Aquí sí queremos sugerir automáticamente cuánto falta.
-            # ==========================================================
-
-            elif (
-                pago_divisa > 0
-                and pago_divisa_cup < total_cup
-                and not pago_cup_efectivo_text
-                and not pago_cup_transferencia_text
-            ):
-                cup_faltante = total_cup - pago_divisa_cup
-
-                if cup_faltante > 0:
-                    valor_auto = f"{cup_faltante:.2f}"
-
-                    self.pago_cup_adicional_var.set(valor_auto)
-
-                    # Guardamos exactamente qué valor fue generado
-                    # automáticamente.
-                    self._pago_cup_adicional_auto_valor = valor_auto
-
-                    pago_cup_efectivo = cup_faltante
-
-                total_pagado_cup = (
-                    pago_divisa_cup
-                    + pago_cup_efectivo
-                    + pago_cup_transferencia
-                )
-
-            # ==========================================================
-            # CASO 3:
-            # HAY UN PAGO CUP MANUAL
-            # ==========================================================
-
-            else:
-                total_pagado_cup = (
-                    pago_divisa_cup
-                    + pago_cup_efectivo
-                    + pago_cup_transferencia
-                )
-
-                # Si el valor del campo ya no coincide con la
-                # sugerencia automática, significa que la dependienta
-                # lo modificó manualmente.
-                if (
-                    auto_valor is not None
-                    and pago_cup_efectivo_text != auto_valor
-                ):
-                    self._pago_cup_adicional_auto_valor = None
-
-            # ==========================================================
-            # DETERMINAR SI EL PAGO CUBRE EL TOTAL
-            # ==========================================================
-
-            if total_pagado_cup < total_cup:
-                self.vuelto_var.set("0.00")
-                self.label_vuelto_valor.config(text="0.00")
-                self.label_vuelto_moneda.config(text="CUP")
-                self.entry_vuelto_moneda.config(state="disabled")
-                self.vuelto_moneda_var.set("")
-                self.label_resto_cup.config(text="")
-                self.vuelto_total_cup = 0.0
-
-                falta = total_cup - total_pagado_cup
-
-                self.label_pago_efectivo_resto.config(
-                    text=f"Faltan {falta:.2f} CUP"
-                )
-
-                return
-
-            # ==========================================================
-            # CALCULAR VUELTO
-            # ==========================================================
-
-            vuelto_cup = total_pagado_cup - total_cup
-            self.vuelto_total_cup = vuelto_cup
-
-            # ==========================================================
-            # RESUMEN DEL PAGO
-            # ==========================================================
-
-            resumen_pago = []
-
-            if pago_divisa > 0:
-                resumen_pago.append(
-                    f"{pago_divisa:.2f} {moneda} "
-                    f"(={pago_divisa_cup:.2f} CUP)"
-                )
-
-            if pago_cup_efectivo > 0:
-                resumen_pago.append(
-                    f"{pago_cup_efectivo:.2f} CUP (efectivo)"
-                )
-
-            if pago_cup_transferencia > 0:
-                resumen_pago.append(
-                    f"{pago_cup_transferencia:.2f} CUP (transferencia)"
-                )
-
-            if resumen_pago:
-                self.label_pago_efectivo_resto.config(
-                    text=" + ".join(resumen_pago)
-                )
-            else:
-                self.label_pago_efectivo_resto.config(text="")
-
-            # ==========================================================
-            # CALCULAR VUELTO EN DIVISA / CUP
-            # ==========================================================
-
-            if vuelto_cup > 0 and moneda != "CUP":
-
-                vuelto_moneda_text = (
-                    self.vuelto_moneda_var.get().strip()
-                )
-
-                if vuelto_moneda_text:
-                    try:
-                        vuelto_moneda = float(vuelto_moneda_text)
-                        vuelto_moneda_cup = vuelto_moneda * tasa
-
-                        if vuelto_moneda_cup > vuelto_cup:
-                            if not silencioso:
-                                self.mostrar_mensaje(
-                                    "error",
-                                    "Error",
-                                    f"El vuelto en {moneda} "
-                                    f"({vuelto_moneda:.2f}) equivale a "
-                                    f"{vuelto_moneda_cup:.2f} CUP,\n"
-                                    f"que excede el vuelto total de "
-                                    f"{vuelto_cup:.2f} CUP.\n"
-                                    f"Máximo permitido: "
-                                    f"{vuelto_cup / tasa:.2f} {moneda}"
-                                )
-
-                                self.vuelto_moneda_var.set("")
-
-                            return
-
-                        vuelto_cup_restante = (
-                            vuelto_cup - vuelto_moneda_cup
-                        )
-
-                        if vuelto_moneda > 0 and vuelto_cup_restante > 0:
-                            self.vuelto_var.set(
-                                f"{vuelto_moneda:.2f} {moneda} + "
-                                f"{vuelto_cup_restante:.2f} CUP"
-                            )
-
-                            self.label_vuelto_valor.config(
-                                text=f"{vuelto_moneda:.2f} {moneda} + "
-                                    f"{vuelto_cup_restante:.2f} CUP"
-                            )
-
-                            self.label_vuelto_moneda.config(text="")
-
-                            self.label_resto_cup.config(
-                                text=f"Resto en CUP: "
-                                    f"{vuelto_cup_restante:.2f}"
-                            )
-
-                        elif vuelto_moneda > 0:
-                            self.vuelto_var.set(
-                                f"{vuelto_moneda:.2f} {moneda}"
-                            )
-
-                            self.label_vuelto_valor.config(
-                                text=f"{vuelto_moneda:.2f} {moneda}"
-                            )
-
-                            self.label_vuelto_moneda.config(text="")
-
-                            self.label_resto_cup.config(
-                                text="Todo el vuelto en moneda de pago"
-                            )
-
-                        else:
-                            self.vuelto_var.set(
-                                f"{vuelto_cup:.2f} CUP"
-                            )
-
-                            self.label_vuelto_valor.config(
-                                text=f"{vuelto_cup:.2f} CUP"
-                            )
-
-                            self.label_vuelto_moneda.config(text="CUP")
-
-                            self.label_resto_cup.config(
-                                text="Todo el vuelto en CUP"
-                            )
-
-                        self.entry_vuelto_moneda.config(state="normal")
-
-                    except ValueError:
-                        if not silencioso:
-                            self.vuelto_moneda_var.set("")
-
-                        self.vuelto_var.set(
-                            f"{vuelto_cup:.2f} CUP"
-                        )
-
-                        self.label_vuelto_valor.config(
-                            text=f"{vuelto_cup:.2f} CUP"
-                        )
-
-                        self.label_vuelto_moneda.config(text="CUP")
-
-                        self.label_resto_cup.config(
-                            text="Todo el vuelto en CUP"
-                        )
-
-                        self.entry_vuelto_moneda.config(state="normal")
-
-                else:
-                    self.vuelto_var.set(
-                        f"{vuelto_cup:.2f} CUP"
-                    )
-
-                    self.label_vuelto_valor.config(
-                        text=f"{vuelto_cup:.2f} CUP"
-                    )
-
-                    self.label_vuelto_moneda.config(text="CUP")
-
-                    self.label_resto_cup.config(
-                        text="Todo el vuelto en CUP"
-                    )
-
-                    self.entry_vuelto_moneda.config(state="normal")
-
-            else:
-                self.vuelto_var.set(
-                    f"{vuelto_cup:.2f}"
-                )
-
-                self.label_vuelto_valor.config(
-                    text=f"{vuelto_cup:.2f}"
-                )
-
-                self.label_vuelto_moneda.config(text="CUP")
-
-                self.entry_vuelto_moneda.config(state="disabled")
-                self.vuelto_moneda_var.set("")
-                self.label_resto_cup.config(text="")
-
+                self._vuelto_en_divisa(total_cup, self.moneda_pago.get(), silencioso)
         except ValueError:
             pass
+
+    def _vuelto_en_cup(self, total_cup):
+        pago = cc.Pago(
+            total_cup=total_cup,
+            efectivo=float(self.pagado_var.get()) if self.pagado_var.get() else 0.0,
+            transferencia=float(self.pago_transferencia_var.get().strip() or "0"),
+        )
+        vuelto = cc.calcular_vuelto(pago)
+
+        if not vuelto.cubre:
+            self._limpiar_zona_vuelto()
+            if pago.efectivo > 0 or pago.transferencia > 0:
+                self.label_pago_efectivo_resto.config(
+                    text=f"Faltan {vuelto.falta_cup:.2f} CUP")
+            else:
+                self.label_pago_efectivo_resto.config(text="")
+            return
+
+        self.vuelto_total_cup = vuelto.vuelto_cup
+        self.vuelto_var.set(f"{vuelto.vuelto_cup:.2f}")
+        self.label_vuelto_valor.config(text=f"{vuelto.vuelto_cup:.2f}")
+        self.label_vuelto_moneda.config(text="CUP")
+        self.entry_vuelto_moneda.config(state="disabled")
+        self.vuelto_moneda_var.set("")
+        self.label_resto_cup.config(text="")
+        self.label_pago_efectivo_resto.config(text=cc.texto_resumen_pago(pago))
+
+    def _leer_cup_adicional(self, variable, mensaje_error, silencioso, limpiar_auto=False):
+        """Lee uno de los campos de CUP adicional. Devuelve (valor, texto, seguir)."""
+        texto = variable.get().strip()
+        try:
+            return (float(texto) if texto else 0.0), texto, True
+        except ValueError:
+            if texto and not silencioso:
+                self.mostrar_mensaje("error", "Error", mensaje_error)
+                variable.set("")
+                if limpiar_auto:
+                    self._pago_cup_adicional_auto_valor = None
+                return 0.0, texto, False
+            return 0.0, texto, True
+
+    def _vuelto_en_divisa(self, total_cup, moneda, silencioso):
+        tasa = float(self.tasa_cambio.get().strip() or "0")
+        if tasa <= 0:
+            if not silencioso:
+                self._limpiar_zona_vuelto()
+            return
+
+        pago_divisa = cc.a_numero(self.pagado_var.get())
+
+        cup_efectivo, cup_efectivo_texto, seguir = self._leer_cup_adicional(
+            self.pago_cup_adicional_var,
+            "Ingresa un número válido para el pago en CUP efectivo",
+            silencioso, limpiar_auto=True)
+        if not seguir:
+            return
+
+        cup_transferencia, cup_transferencia_texto, seguir = self._leer_cup_adicional(
+            self.pago_transferencia_adicional_var,
+            "Ingresa un número válido para el pago en CUP transferencia",
+            silencioso)
+        if not seguir:
+            return
+
+        if cup_efectivo < 0:
+            if not silencioso:
+                self.mostrar_mensaje("error", "Error",
+                                     "El pago en CUP efectivo no puede ser negativo")
+                self.pago_cup_adicional_var.set("0.00")
+            self._pago_cup_adicional_auto_valor = None
+            return
+
+        if cup_transferencia < 0:
+            if not silencioso:
+                self.mostrar_mensaje("error", "Error",
+                                     "El pago en CUP transferencia no puede ser negativo")
+                self.pago_transferencia_adicional_var.set("0.00")
+            return
+
+        # ---- Autorrelleno del CUP que falta -------------------------------
+        #
+        # Mientras el campo conserve exactamente el valor que pusimos nosotros,
+        # sigue siendo una sugerencia. En cuanto la dependienta lo cambia, deja
+        # de coincidir y pasa a ser un pago manual.
+        auto_valor = getattr(self, "_pago_cup_adicional_auto_valor", None)
+        es_sugerencia = auto_valor is not None and cup_efectivo_texto == auto_valor
+        divisa_en_cup = pago_divisa * tasa if pago_divisa > 0 else 0.0
+
+        if pago_divisa > 0 and divisa_en_cup >= total_cup:
+            # La divisa ya cubre la venta: sobra la sugerencia en CUP.
+            if es_sugerencia:
+                self.pago_cup_adicional_var.set("")
+                cup_efectivo = 0.0
+                self._pago_cup_adicional_auto_valor = None
+                if not cup_transferencia_texto:
+                    cup_transferencia = 0.0
+
+        elif pago_divisa > 0 and not cup_efectivo_texto and not cup_transferencia_texto:
+            # No alcanza y no hay CUP puesto: sugerimos lo que falta.
+            falta = cc.cup_faltante(total_cup, pago_divisa, tasa)
+            if falta > 0:
+                valor_auto = f"{falta:.2f}"
+                self.pago_cup_adicional_var.set(valor_auto)
+                self._pago_cup_adicional_auto_valor = valor_auto
+                cup_efectivo = falta
+
+        elif auto_valor is not None and cup_efectivo_texto != auto_valor:
+            # Lo tocó a mano: deja de ser sugerencia nuestra.
+            self._pago_cup_adicional_auto_valor = None
+
+        # ---- Cálculo ------------------------------------------------------
+        pago = cc.Pago(
+            total_cup=total_cup,
+            moneda=moneda,
+            tasa=tasa,
+            efectivo=pago_divisa,
+            cup_efectivo=cup_efectivo,
+            cup_transferencia=cup_transferencia,
+            vuelto_en_moneda=cc.a_numero(self.vuelto_moneda_var.get()),
+        )
+        vuelto = cc.calcular_vuelto(pago)
+
+        if not vuelto.cubre:
+            self._limpiar_zona_vuelto()
+            self.label_pago_efectivo_resto.config(text=f"Faltan {vuelto.falta_cup:.2f} CUP")
+            return
+
+        self.vuelto_total_cup = vuelto.vuelto_cup
+        self.label_pago_efectivo_resto.config(text=cc.texto_resumen_pago(pago))
+
+        if vuelto.error == "vuelto_moneda_excede":
+            if not silencioso:
+                maximo = cc.maximo_vuelto_en_moneda(vuelto.vuelto_cup, tasa)
+                vuelto_moneda_cup = pago.vuelto_en_moneda * tasa
+                self.mostrar_mensaje(
+                    "error", "Error",
+                    f"El vuelto en {moneda} ({pago.vuelto_en_moneda:.2f}) equivale a "
+                    f"{vuelto_moneda_cup:.2f} CUP,\n"
+                    f"que excede el vuelto total de {vuelto.vuelto_cup:.2f} CUP.\n"
+                    f"Máximo permitido: {maximo:.2f} {moneda}")
+                self.vuelto_moneda_var.set("")
+            return
+
+        self._pintar_vuelto_en_divisa(vuelto, moneda)
+
+    def _pintar_vuelto_en_divisa(self, vuelto, moneda):
+        """Muestra el vuelto repartido entre la moneda de pago y el CUP."""
+        if vuelto.vuelto_cup <= 0:
+            self.vuelto_var.set(f"{vuelto.vuelto_cup:.2f}")
+            self.label_vuelto_valor.config(text=f"{vuelto.vuelto_cup:.2f}")
+            self.label_vuelto_moneda.config(text="CUP")
+            self.entry_vuelto_moneda.config(state="disabled")
+            self.vuelto_moneda_var.set("")
+            self.label_resto_cup.config(text="")
+            return
+
+        if vuelto.vuelto_moneda > 0 and vuelto.vuelto_cup_restante > 0:
+            texto = (f"{vuelto.vuelto_moneda:.2f} {moneda} + "
+                     f"{vuelto.vuelto_cup_restante:.2f} CUP")
+            resto = f"Resto en CUP: {vuelto.vuelto_cup_restante:.2f}"
+            moneda_label = ""
+        elif vuelto.vuelto_moneda > 0:
+            texto = f"{vuelto.vuelto_moneda:.2f} {moneda}"
+            resto = "Todo el vuelto en moneda de pago"
+            moneda_label = ""
+        else:
+            texto = f"{vuelto.vuelto_cup:.2f} CUP"
+            resto = "Todo el vuelto en CUP"
+            moneda_label = "CUP"
+
+        self.vuelto_var.set(texto)
+        self.label_vuelto_valor.config(text=texto)
+        self.label_vuelto_moneda.config(text=moneda_label)
+        self.label_resto_cup.config(text=resto)
+        self.entry_vuelto_moneda.config(state="normal")
+
     def calcular_vuelto(self, event=None):
         self._calcular_vuelto_interno(silencioso=False)
 

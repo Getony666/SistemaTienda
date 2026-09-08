@@ -7,6 +7,7 @@ from ..caja import registrar_entrada_efectivo, registrar_salida_efectivo
 from ..inventario import registrar_merma, registrar_salida
 from ..productos import actualizar_producto, agregar_producto, buscar_productos, eliminar_producto
 from ..rutas import consulta
+from ..calculo_cobro import redondear_subtotal_peso
 from .estilos import COLOR_TARJETA, COLOR_SELECCION, COLOR_TEXTO_SUAVE, COLOR_TOTAL
 
 
@@ -623,8 +624,7 @@ class PanelVentasMixin:
             try:
                 cant = float(cantidad_var.get().strip() or "0")
                 if tipo == "peso":
-                    subtotal_bruto = cant * precio
-                    subtotal_redondeado = round(subtotal_bruto / 5) * 5
+                    subtotal_redondeado = redondear_subtotal_peso(cant, precio)
                     subtotal_label.config(text=f"Subtotal: {subtotal_redondeado:.2f} CUP")
                 else:
                     subtotal_label.config(text=f"Subtotal: {cant * precio:.2f} CUP")
@@ -642,8 +642,7 @@ class PanelVentasMixin:
                     self.mostrar_mensaje("error", "Error", f"No hay suficiente stock. Disponible: {stock:.2f} {unidad}")
                     return
                 if tipo == "peso":
-                    subtotal_bruto = cant * precio
-                    subtotal_redondeado = round(subtotal_bruto / 5) * 5
+                    subtotal_redondeado = redondear_subtotal_peso(cant, precio)
                     nuevo_precio = subtotal_redondeado / cant if cant > 0 else precio
                 else:
                     nuevo_precio = precio
