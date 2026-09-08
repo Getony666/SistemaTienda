@@ -24,7 +24,14 @@ import time
 import urllib.error
 import urllib.request
 
-RAIZ = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    # Empaquetado: la interfaz viaja dentro del ejecutable y PyInstaller la
+    # descomprime en una carpeta temporal. La base de datos NO va ahí: la
+    # busca `lddl/rutas.py` junto al .exe, que es donde debe estar.
+    RAIZ = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+else:
+    RAIZ = os.path.dirname(os.path.abspath(__file__))
+
 DIST = os.path.join(RAIZ, "interfaz", "dist")
 
 # Windows guarda los tipos MIME en el registro, y en muchas máquinas .js está
