@@ -7,6 +7,7 @@ from ..caja import registrar_entrada_efectivo, registrar_salida_efectivo
 from ..inventario import registrar_merma, registrar_salida
 from ..productos import actualizar_producto, agregar_producto, buscar_productos, eliminar_producto
 from ..rutas import consulta
+from .. import carrito as ca
 from ..calculo_cobro import redondear_subtotal_peso
 from .estilos import COLOR_TARJETA, COLOR_SELECCION, COLOR_TEXTO_SUAVE, COLOR_TOTAL
 
@@ -569,7 +570,7 @@ class PanelVentasMixin:
         if indice < len(self.carrito):
             nombre = self.carrito[indice]["nombre"]
             if self.mostrar_mensaje("yesno", "Confirmar", f"Eliminar '{nombre}' del carrito?"):
-                del self.carrito[indice]
+                self.carrito, _ = ca.quitar(self.carrito, indice)
                 self.actualizar_carrito()
 
     def editar_cantidad_carrito(self, event):
@@ -635,41 +636,30 @@ class PanelVentasMixin:
         def aceptar_cantidad():
             try:
                 cant = float(cantidad_var.get().strip() or "0")
-                if cant <= 0:
-                    self.mostrar_mensaje("error", "Error", "La cantidad debe ser mayor que 0")
-                    return
-                if cant > stock:
-                    self.mostrar_mensaje("error", "Error", f"No hay suficiente stock. Disponible: {stock:.2f} {unidad}")
-                    return
-                if tipo == "peso":
-                    subtotal_redondeado = redondear_subtotal_peso(cant, precio)
-                    nuevo_precio = subtotal_redondeado / cant if cant > 0 else precio
-                else:
-                    nuevo_precio = precio
-
-                if indice_carrito is not None:
-                    self.carrito[indice_carrito]["cantidad"] = cant
-                    self.carrito[indice_carrito]["precio"] = nuevo_precio
-                    self.actualizar_carrito()
-                    ventana.destroy()
-                    return
-
-                for item in self.carrito:
-                    if item["id"] == producto_id:
-                        nueva_cant = item["cantidad"] + cant
-                        total_precio_actual = item["precio"] * item["cantidad"]
-                        total_precio_nuevo = nuevo_precio * cant
-                        precio_promedio = (total_precio_actual + total_precio_nuevo) / (item["cantidad"] + cant)
-                        item["cantidad"] = nueva_cant
-                        item["precio"] = precio_promedio
-                        self.actualizar_carrito()
-                        ventana.destroy()
-                        return
-                self.carrito.append({"id": producto_id, "nombre": nombre, "cantidad": cant, "precio": nuevo_precio, "tipo": tipo, "unidad": unidad})
-                self.actualizar_carrito()
-                ventana.destroy()
             except ValueError:
                 self.mostrar_mensaje("error", "Error", "Ingresa un número válido")
+                return
+
+            if indice_carrito is not None:
+                nuevo, motivo = ca.fijar_cantidad(self.carrito, indice_carrito, cant, stock)
+            else:
+                nuevo, motivo = ca.agregar_cantidad(self.carrito, producto_id, nombre,
+                                                    cant, precio, stock, tipo, unidad)
+
+            if motivo == "cantidad_invalida":
+                self.mostrar_mensaje("error", "Error", "La cantidad debe ser mayor que 0")
+                return
+            if motivo == "stock_insuficiente":
+                self.mostrar_mensaje("error", "Error",
+                                     f"No hay suficiente stock. Disponible: {stock:.2f} {unidad}")
+                return
+            if motivo:
+                self.mostrar_mensaje("error", "Error", ca.MOTIVOS.get(motivo, motivo))
+                return
+
+            self.carrito = nuevo
+            self.actualizar_carrito()
+            ventana.destroy()
 
         frame_botones = ttk.Frame(ventana)
         frame_botones.pack(pady=15)
@@ -692,19 +682,15 @@ class PanelVentasMixin:
             stock = float(valores[3])
             tipo = valores[4]
             unidad = valores[5]
-            if stock <= 0:
+            nuevo, motivo = ca.agregar_unidad(self.carrito, producto_id, nombre,
+                                              precio, stock, tipo, unidad)
+            if motivo == "sin_stock":
                 self.mostrar_mensaje("error", "Error", f"El producto '{nombre}' no tiene stock")
                 return
-            for item in self.carrito:
-                if item["id"] == producto_id:
-                    if item["cantidad"] + 1 <= stock:
-                        item["cantidad"] += 1
-                        self.actualizar_carrito()
-                        return
-                    else:
-                        self.mostrar_mensaje("error", "Error", f"No hay suficiente stock de '{nombre}'")
-                        return
-            self.carrito.append({"id": producto_id, "nombre": nombre, "cantidad": 1, "precio": precio, "tipo": tipo, "unidad": unidad})
+            if motivo == "stock_insuficiente":
+                self.mostrar_mensaje("error", "Error", f"No hay suficiente stock de '{nombre}'")
+                return
+            self.carrito = nuevo
             self.actualizar_carrito()
         except Exception as e:
             self.mostrar_mensaje("error", "Error", f"Error: {str(e)}")
@@ -712,15 +698,10 @@ class PanelVentasMixin:
     def actualizar_carrito(self):
         for item in self.tabla_carrito.get_children():
             self.tabla_carrito.delete(item)
-        total = 0
-        for i, item in enumerate(self.carrito):
-            subtotal = item["cantidad"] * item["precio"]
-            total += subtotal
-            unidad = item.get("unidad", "unidad")
-            cantidad = item["cantidad"]
-            if isinstance(cantidad, float) and cantidad.is_integer():
-                cantidad = int(cantidad)
-            self.tabla_carrito.insert("", "end", i, values=(item["nombre"], f"{cantidad} {unidad}", f"{item['precio']:.2f}", f"{subtotal:.2f}", "✖"))
+        for i, fila in enumerate(ca.filas_para_tabla(self.carrito)):
+            self.tabla_carrito.insert("", "end", i, values=(
+                fila["nombre"], fila["cantidad"], fila["precio"], fila["subtotal"], "✖"))
+        total = ca.total(self.carrito)
         self.total_var.set(f"{total:.2f}")
         if self.transferencia_var.get() == 1:
             self.pagado_var.set(f"{total:.2f}")
