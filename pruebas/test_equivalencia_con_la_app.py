@@ -214,5 +214,70 @@ class LaAppDaLaReferencia(unittest.TestCase):
                         f"la referencia dice {REFERENCIA[nombre]}")
 
 
+# El otro camino de cálculo: teclear en "Pagado (Transferencia)".
+# (descripcion, total, pagado, transferencia)
+CASOS_MIXTO = [
+    ("transferencia parcial",  "1000.00", "",     "400"),
+    ("transferencia total",    "1000.00", "",     "1000"),
+    ("transferencia de mas",   "1000.00", "",     "1500"),
+    ("transferencia negativa", "1000.00", "",     "-5"),
+    ("sin transferencia",      "1000.00", "1200", ""),
+    ("efectivo insuficiente",  "1000.00", "500",  ""),
+]
+
+# (vuelto, resumen, vuelto en CUP, efectivo que la app rellena sola)
+MIXTO = {
+    "transferencia parcial": ('0.00 CUP', 'Efectivo: 600.00  |  Transferencia: 400.00', 0.0, '600.00'),
+    "transferencia total": ('0.00 CUP', 'Transferencia: 1000.00', 0.0, '0.00'),
+    "transferencia de mas": ('0.00 CUP', '', 0.0, ''),
+    "transferencia negativa": ('0.00 CUP', '', 0.0, ''),
+    "sin transferencia": ('200.00 CUP', 'Efectivo: 1200.00', 200.0, '1200'),
+    "efectivo insuficiente": ('0.00 CUP', 'Efectivo: 500.00', 0.0, '500'),
+}
+
+
+@unittest.skipUnless(HAY_PANTALLA, "hace falta entorno gráfico")
+class TecleandoEnTransferencia(unittest.TestCase):
+    """El vuelto al escribir en el campo de transferencia tampoco cambia.
+
+    Este camino formatea el resumen con doble espacio alrededor de la barra,
+    al contrario que el otro. Se conserva tal cual estaba.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.root = tb.Window(themename="flatly")
+        cls.root.withdraw()
+        cls.v = VentanaVentas(cls.root)
+        cls.v.mostrar_mensaje = lambda *a, **k: True
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.root.destroy()
+
+    def test_todos_los_casos(self):
+        v = self.v
+        for nombre, total, pagado, transferencia in CASOS_MIXTO:
+            with self.subTest(caso=nombre):
+                v.transferencia_var.set(0)
+                v.moneda_pago.set("CUP")
+                v.total_var.set(total)
+                v.pagado_var.set(pagado)
+                v.pago_transferencia_var.set(transferencia)
+                v.vuelto_total_cup = 0.0
+                v.vuelto_var.set("")
+                v.label_pago_efectivo_resto.config(text="")
+
+                v.calcular_vuelto_con_pago_mixto()
+
+                obtenido = (
+                    v.vuelto_var.get(),
+                    v.label_pago_efectivo_resto.cget("text"),
+                    round(v.vuelto_total_cup, 6),
+                    v.pagado_var.get(),
+                )
+                self.assertEqual(obtenido, MIXTO[nombre], msg=f"[{nombre}]")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

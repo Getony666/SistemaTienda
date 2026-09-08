@@ -156,44 +156,51 @@ class CobroMixin:
             pass
 
     def calcular_vuelto_con_pago_mixto(self, event=None):
-        moneda = self.moneda_pago.get()
-        if moneda != "CUP" or self.transferencia_var.get() == 1:
+        """Recalcula al teclear en el campo de transferencia.
+
+        El resumen de esta vía lleva doble espacio alrededor de la barra, al
+        contrario que el de _vuelto_en_cup. Se conserva tal cual para no
+        cambiar lo que la cajera ve.
+        """
+        if self.moneda_pago.get() != cc.CUP or self.transferencia_var.get() == 1:
             return
         self._actualizar_efectivo_desde_transferencia()
         try:
-            total_venta = float(self.total_var.get())
-            pago_efectivo = float(self.pagado_var.get().strip() or "0")
-            pago_transferencia = float(self.pago_transferencia_var.get().strip() or "0")
-            if pago_transferencia < 0:
-                self.mostrar_mensaje("error", "Error", "El pago por transferencia no puede ser negativo")
+            pago = cc.Pago(
+                total_cup=float(self.total_var.get()),
+                efectivo=float(self.pagado_var.get().strip() or "0"),
+                transferencia=float(self.pago_transferencia_var.get().strip() or "0"),
+            )
+            if pago.transferencia < 0:
+                self.mostrar_mensaje("error", "Error",
+                                     "El pago por transferencia no puede ser negativo")
                 self.pago_transferencia_var.set("")
                 return
-            total_pagado = pago_efectivo + pago_transferencia
-            if total_pagado < 0:
+            if pago.efectivo + pago.transferencia < 0:
                 return
-            if pago_efectivo > 0 and pago_transferencia > 0:
-                self.label_pago_efectivo_resto.config(text=f"Efectivo: {pago_efectivo:.2f}  |  Transferencia: {pago_transferencia:.2f}")
-            elif pago_transferencia > 0:
-                self.label_pago_efectivo_resto.config(text=f"Transferencia: {pago_transferencia:.2f}")
-            elif pago_efectivo > 0:
-                self.label_pago_efectivo_resto.config(text=f"Efectivo: {pago_efectivo:.2f}")
+
+            if pago.efectivo > 0 and pago.transferencia > 0:
+                resumen = (f"Efectivo: {pago.efectivo:.2f}  |  "
+                           f"Transferencia: {pago.transferencia:.2f}")
+            elif pago.transferencia > 0:
+                resumen = f"Transferencia: {pago.transferencia:.2f}"
+            elif pago.efectivo > 0:
+                resumen = f"Efectivo: {pago.efectivo:.2f}"
             else:
-                self.label_pago_efectivo_resto.config(text="")
-            if total_pagado >= total_venta:
-                vuelto_cup = total_pagado - total_venta
-                self.vuelto_total_cup = vuelto_cup
-                self.vuelto_var.set(f"{vuelto_cup:.2f} CUP")
-                self.label_vuelto_moneda.config(text="CUP")
-                if vuelto_cup > 0:
-                    self.entry_vuelto_moneda.config(state="disabled")
-                    self.vuelto_moneda_var.set("")
-                    self.label_resto_cup.config(text="")
-                else:
-                    self.vuelto_var.set("0.00 CUP")
+                resumen = ""
+            self.label_pago_efectivo_resto.config(text=resumen)
+
+            vuelto = cc.calcular_vuelto(pago)
+            self.label_vuelto_moneda.config(text="CUP")
+            self.vuelto_total_cup = vuelto.vuelto_cup if vuelto.cubre else 0.0
+
+            if vuelto.cubre and vuelto.vuelto_cup > 0:
+                self.vuelto_var.set(f"{vuelto.vuelto_cup:.2f} CUP")
+                self.entry_vuelto_moneda.config(state="disabled")
+                self.vuelto_moneda_var.set("")
+                self.label_resto_cup.config(text="")
             else:
                 self.vuelto_var.set("0.00 CUP")
-                self.vuelto_total_cup = 0.0
-                self.label_vuelto_moneda.config(text="CUP")
         except ValueError:
             self.pago_transferencia_var.set("")
             self.label_pago_efectivo_resto.config(text="")
@@ -451,6 +458,69 @@ class CobroMixin:
             self.vuelto_var.set(f"{vuelto_total_cup:.2f} CUP")
             self.label_vuelto_moneda.config(text="")
 
+    def _utilidad_del_carrito(self):
+        """Diferencia entre lo que se cobra y lo que costó, sumando el carrito."""
+        utilidad = 0.0
+        with consulta() as (_conn, cursor):
+            for item in self.carrito:
+                cursor.execute("SELECT precio_compra FROM productos WHERE id = ?", (item["id"],))
+                fila = cursor.fetchone()
+                if fila:
+                    utilidad += (item["precio"] - fila[0]) * item["cantidad"]
+        return utilidad
+
+    def _leer_pago_para_cerrar(self, total_cup):
+        """Recoge lo tecleado al cerrar la venta. Devuelve (Pago, error)."""
+        if self.transferencia_var.get() == 1:
+            return cc.Pago(total_cup=total_cup, solo_transferencia=True), None
+
+        moneda = self.moneda_pago.get()
+
+        if moneda == cc.CUP:
+            try:
+                transferencia = float(self.pago_transferencia_var.get().strip() or "0")
+            except ValueError:
+                transferencia = 0.0
+            return cc.Pago(
+                total_cup=total_cup,
+                efectivo=float(self.pagado_var.get()) if self.pagado_var.get() else 0.0,
+                transferencia=transferencia,
+            ), None
+
+        try:
+            tasa = float(self.tasa_cambio.get().strip())
+        except ValueError:
+            return None, "Ingresa una tasa de cambio válida"
+        if tasa <= 0:
+            return None, "La tasa de cambio debe ser mayor que 0"
+
+        cup_efectivo_texto = self.pago_cup_adicional_var.get().strip()
+        cup_transferencia_texto = self.pago_transferencia_adicional_var.get().strip()
+
+        try:
+            cup_efectivo = float(cup_efectivo_texto) if cup_efectivo_texto else 0.0
+        except ValueError:
+            return None, "Ingresa un número válido para el pago en CUP efectivo"
+        try:
+            cup_transferencia = float(cup_transferencia_texto) if cup_transferencia_texto else 0.0
+        except ValueError:
+            return None, "Ingresa un número válido para el pago en CUP transferencia"
+
+        if cup_efectivo < 0:
+            return None, "El pago en CUP efectivo no puede ser negativo"
+        if cup_transferencia < 0:
+            return None, "El pago en CUP transferencia no puede ser negativo"
+
+        return cc.Pago(
+            total_cup=total_cup,
+            moneda=moneda,
+            tasa=tasa,
+            efectivo=float(self.pagado_var.get()) if self.pagado_var.get() else 0.0,
+            cup_efectivo=cup_efectivo,
+            cup_transferencia=cup_transferencia,
+            vuelto_en_moneda=cc.a_numero(self.vuelto_moneda_var.get()),
+        ), None
+
     def finalizar_venta(self):
         if not self.carrito:
             self.mostrar_mensaje("warning", "Advertencia", "El carrito está vacío")
@@ -460,249 +530,62 @@ class CobroMixin:
         es_mensajeria = self.mensajeria_var.get()
         observaciones = self.observaciones_deuda_var.get().strip() if es_deuda else ""
 
-        pago_texto = ""
-        vuelto_texto = ""
-        monto_efectivo_cup = 0.0
-        monto_transferencia_cup = 0.0
-        pago_divisa = 0.0
-        pago_efectivo = 0.0
-        pago_transferencia = 0.0
-        pago_cup_efectivo = 0.0
-        pago_cup_transferencia = 0.0
-        vuelto_cup_total = 0.0
-        vuelto_moneda = 0.0
-        salida_efectivo_extra = 0.0
-        utilidad_total = 0.0
+        try:
+            total_cup = float(self.total_var.get())
+        except ValueError:
+            self.mostrar_mensaje("error", "Error", "El total de la venta no es válido")
+            return
 
-        saldo_pendiente = 0.0
-        pagada = 0
-        fecha_pago = None
-        total_cup = 0.0
-        metodo_pago = "Efectivo"
-        moneda_pago = "CUP"
-        tasa_cambio = 1.0
-        metodo_pago_real = ""
+        utilidad_total = self._utilidad_del_carrito()
 
-        with consulta() as (conn_util, cursor_util):
-            for item in self.carrito:
-                cursor_util.execute("SELECT precio_compra FROM productos WHERE id = ?", (item["id"],))
-                fila_util = cursor_util.fetchone()
-                if fila_util:
-                    precio_compra = fila_util[0]
-                    utilidad_item = (item["precio"] - precio_compra) * item["cantidad"]
-                    utilidad_total += utilidad_item
+        pago, error = self._leer_pago_para_cerrar(total_cup)
+        if error:
+            self.mostrar_mensaje("error", "Error", error)
+            return
 
-        if self.transferencia_var.get() == 1:
-            metodo_pago = "Transferencia"
-            moneda_pago = "CUP"
-            tasa_cambio = 1.0
-            pago_transferencia = float(self.total_var.get())
-            total_pagado = pago_transferencia
-            pago_texto = f"Transferencia: {total_pagado:.2f} CUP"
-            vuelto_texto = "0.00 CUP"
-            monto_efectivo_cup = 0.0
-            monto_transferencia_cup = total_pagado
-            metodo_pago_real = "Transferencia"
-            mensaje_confirmacion = self._construir_mensaje_confirmacion(
-                total_cup=float(self.total_var.get()),
-                pago_texto=pago_texto,
-                vuelto_texto=vuelto_texto,
-                es_deuda=es_deuda,
-                es_mensajeria=es_mensajeria,
-                observaciones=observaciones
-            )
-        else:
-            metodo_pago = "Efectivo"
-            moneda_pago = self.moneda_pago.get()
-            if moneda_pago == "CUP":
-                tasa_cambio = 1.0
-                pago_efectivo = float(self.pagado_var.get()) if self.pagado_var.get() else 0.0
-                try:
-                    pago_transferencia = float(self.pago_transferencia_var.get().strip() or "0")
-                except ValueError:
-                    pago_transferencia = 0.0
-                total_pagado = pago_efectivo + pago_transferencia
+        desglose = cc.desglosar_para_registro(pago, es_deuda=bool(es_deuda))
 
-                if pago_efectivo > 0 and pago_transferencia > 0:
-                    metodo_pago_real = "Mixto"
-                    pago_texto = f"Efectivo: {pago_efectivo:.2f} CUP + Transferencia: {pago_transferencia:.2f} CUP"
-                elif pago_transferencia > 0:
-                    metodo_pago_real = "Transferencia"
-                    pago_texto = f"Transferencia: {pago_transferencia:.2f} CUP"
-                else:
-                    metodo_pago_real = "Efectivo"
-                    pago_texto = f"Efectivo: {pago_efectivo:.2f} CUP"
+        if desglose.error == "vuelto_moneda_excede":
+            vuelto = cc.calcular_vuelto(pago)
+            self.mostrar_mensaje(
+                "error", "Error",
+                f"El vuelto en {pago.moneda} ({pago.vuelto_en_moneda:.2f}) equivale a "
+                f"{pago.vuelto_en_moneda * pago.tasa:.2f} CUP, "
+                f"que excede el vuelto total de {vuelto.vuelto_cup:.2f} CUP.\n"
+                f"Máximo permitido: "
+                f"{cc.maximo_vuelto_en_moneda(vuelto.vuelto_cup, pago.tasa):.2f} {pago.moneda}")
+            return
 
-                total_cup = float(self.total_var.get())
-                vuelto_cup = total_pagado - total_cup
-                if vuelto_cup > 0:
-                    vuelto_texto = f"{vuelto_cup:.2f} CUP"
-                    monto_efectivo_cup = pago_efectivo - vuelto_cup
-                    if monto_efectivo_cup < 0:
-                        monto_transferencia_cup = pago_transferencia - (vuelto_cup - pago_efectivo)
-                        monto_efectivo_cup = 0.0
-                    else:
-                        monto_transferencia_cup = pago_transferencia
-                else:
-                    monto_efectivo_cup = pago_efectivo
-                    monto_transferencia_cup = pago_transferencia
-                    vuelto_texto = "0.00 CUP"
+        if desglose.error:
+            self.mostrar_mensaje("error", "Error", "Revisa los montos del pago")
+            return
 
-                mensaje_confirmacion = self._construir_mensaje_confirmacion(
-                    total_cup=total_cup,
-                    pago_texto=pago_texto,
-                    vuelto_texto=vuelto_texto,
-                    es_deuda=es_deuda,
-                    es_mensajeria=es_mensajeria,
-                    observaciones=observaciones
-                )
-            else:
-                try:
-                    tasa_cambio = float(self.tasa_cambio.get().strip())
-                    if tasa_cambio <= 0:
-                        self.mostrar_mensaje("error", "Error", "La tasa de cambio debe ser mayor que 0")
-                        return
-                except ValueError:
-                    self.mostrar_mensaje("error", "Error", "Ingresa una tasa de cambio válida")
-                    return
+        metodo_pago = desglose.metodo_pago
+        moneda_pago = desglose.moneda_pago
+        tasa_cambio = desglose.tasa_cambio
+        metodo_pago_real = desglose.metodo_pago_real
+        monto_efectivo_cup = desglose.monto_efectivo_cup
+        monto_transferencia_cup = desglose.monto_transferencia_cup
+        salida_efectivo_extra = desglose.salida_efectivo_extra
+        pago_divisa = desglose.pago_divisa
+        vuelto_moneda = desglose.vuelto_moneda
+        pago_texto = desglose.pago_texto
+        vuelto_texto = desglose.vuelto_texto
+        saldo_pendiente = desglose.saldo_pendiente
+        pagada = desglose.pagada
+        total_pagado = desglose.total_pagado
+        fecha_pago = (None if es_deuda
+                      else datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-                pago_divisa = float(self.pagado_var.get()) if self.pagado_var.get() else 0.0
-                
-                # Obtener los montos en CUP (que ahora son editables)
-                pago_cup_efectivo_text = self.pago_cup_adicional_var.get().strip()
-                pago_cup_transferencia_text = self.pago_transferencia_adicional_var.get().strip()
-                
-                try:
-                    pago_cup_efectivo = float(pago_cup_efectivo_text) if pago_cup_efectivo_text else 0.0
-                except ValueError:
-                    self.mostrar_mensaje("error", "Error", "Ingresa un número válido para el pago en CUP efectivo")
-                    return
-                
-                try:
-                    pago_cup_transferencia = float(pago_cup_transferencia_text) if pago_cup_transferencia_text else 0.0
-                except ValueError:
-                    self.mostrar_mensaje("error", "Error", "Ingresa un número válido para el pago en CUP transferencia")
-                    return
-
-                # Validar que los montos no sean negativos
-                if pago_cup_efectivo < 0:
-                    self.mostrar_mensaje("error", "Error", "El pago en CUP efectivo no puede ser negativo")
-                    return
-                
-                if pago_cup_transferencia < 0:
-                    self.mostrar_mensaje("error", "Error", "El pago en CUP transferencia no puede ser negativo")
-                    return
-
-                total_pagado = (pago_divisa * tasa_cambio) + pago_cup_efectivo + pago_cup_transferencia
-
-                # Determinar método de pago real
-                if pago_divisa > 0 and (pago_cup_efectivo > 0 or pago_cup_transferencia > 0):
-                    metodo_pago_real = "Mixto"
-                elif pago_divisa > 0:
-                    metodo_pago_real = "Efectivo"
-                else:
-                    metodo_pago_real = "Efectivo"
-                    moneda_pago = "CUP"
-                    tasa_cambio = 1.0
-                    total_pagado = pago_cup_efectivo + pago_cup_transferencia
-
-                # Construir texto de pago
-                partes_pago = []
-                if pago_divisa > 0:
-                    partes_pago.append(f"{pago_divisa:.2f} {moneda_pago}")
-                if pago_cup_efectivo > 0:
-                    partes_pago.append(f"{pago_cup_efectivo:.2f} CUP (efectivo)")
-                if pago_cup_transferencia > 0:
-                    partes_pago.append(f"{pago_cup_transferencia:.2f} CUP (transferencia)")
-                
-                pago_texto = " + ".join(partes_pago) if partes_pago else "0.00 CUP"
-                
-                total_cup = float(self.total_var.get())
-                vuelto_cup_total = total_pagado - total_cup
-
-                vuelto_moneda = 0.0
-                vuelto_moneda_text = self.vuelto_moneda_var.get().strip()
-                if vuelto_moneda_text:
-                    try:
-                        vuelto_moneda = float(vuelto_moneda_text)
-                    except ValueError:
-                        vuelto_moneda = 0.0
-
-                if vuelto_moneda > 0 and moneda_pago != "CUP":
-                    vuelto_moneda_cup = vuelto_moneda * tasa_cambio
-                    if vuelto_moneda_cup > vuelto_cup_total:
-                        self.mostrar_mensaje("error", "Error", 
-                            f"El vuelto en {moneda_pago} ({vuelto_moneda:.2f}) equivale a {vuelto_moneda_cup:.2f} CUP, "
-                            f"que excede el vuelto total de {vuelto_cup_total:.2f} CUP.\n"
-                            f"Máximo permitido: {vuelto_cup_total / tasa_cambio:.2f} {moneda_pago}")
-                        return
-
-                vuelto_cup_restante = vuelto_cup_total - (vuelto_moneda * tasa_cambio) if vuelto_moneda > 0 else vuelto_cup_total
-
-                if vuelto_cup_total > 0:
-                    if vuelto_moneda > 0 and vuelto_cup_restante > 0:
-                        vuelto_texto = f"{vuelto_moneda:.2f} {moneda_pago} + {vuelto_cup_restante:.2f} CUP"
-                    elif vuelto_moneda > 0:
-                        vuelto_texto = f"{vuelto_moneda:.2f} {moneda_pago}"
-                    else:
-                        vuelto_texto = f"{vuelto_cup_total:.2f} CUP"
-                else:
-                    vuelto_texto = "0.00 CUP"
-
-                monto_efectivo_cup = pago_cup_efectivo
-                monto_transferencia_cup = pago_cup_transferencia
-                salida_efectivo_extra = 0.0
-
-                if vuelto_cup_restante > 0:
-                    pago_cup_total = pago_cup_efectivo + pago_cup_transferencia
-                    if pago_cup_total >= vuelto_cup_restante:
-                        # El vuelto se descuenta del pago en CUP
-                        if monto_efectivo_cup >= vuelto_cup_restante:
-                            monto_efectivo_cup -= vuelto_cup_restante
-                        else:
-                            resto = vuelto_cup_restante - monto_efectivo_cup
-                            monto_efectivo_cup = 0.0
-                            monto_transferencia_cup -= resto
-                            if monto_transferencia_cup < 0:
-                                monto_transferencia_cup = 0.0
-                    else:
-                        salida_efectivo_extra = vuelto_cup_restante - pago_cup_total
-                        monto_efectivo_cup = 0.0
-                        monto_transferencia_cup = 0.0
-
-                mensaje_confirmacion = self._construir_mensaje_confirmacion(
-                    total_cup=total_cup,
-                    pago_texto=pago_texto,
-                    vuelto_texto=vuelto_texto,
-                    es_deuda=es_deuda,
-                    es_mensajeria=es_mensajeria,
-                    observaciones=observaciones,
-                    tasa=tasa_cambio if moneda_pago != "CUP" else None
-                )
-
-        total_cup = float(self.total_var.get())
-
-        if es_deuda:
-            monto_efectivo_cup = 0.0
-            monto_transferencia_cup = 0.0
-            metodo_pago_real = ""
-            pago_texto = "Deuda registrada"
-            vuelto_texto = "0.00 CUP"
-            saldo_pendiente = total_cup
-            pagada = 0
-            fecha_pago = None
-            mensaje_confirmacion = self._construir_mensaje_confirmacion(
-                total_cup=total_cup,
-                pago_texto=pago_texto,
-                vuelto_texto=vuelto_texto,
-                es_deuda=es_deuda,
-                es_mensajeria=es_mensajeria,
-                observaciones=observaciones
-            )
-        else:
-            saldo_pendiente = 0.0
-            pagada = 1
-            fecha_pago = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        mensaje_confirmacion = self._construir_mensaje_confirmacion(
+            total_cup=total_cup,
+            pago_texto=pago_texto,
+            vuelto_texto=vuelto_texto,
+            es_deuda=es_deuda,
+            es_mensajeria=es_mensajeria,
+            observaciones=observaciones,
+            tasa=tasa_cambio if moneda_pago != cc.CUP else None,
+        )
 
         if not es_deuda and total_pagado < total_cup:
             self.mostrar_mensaje("error", "Error", f"El total pagado ({total_pagado:.2f}) es menor que el total de la venta ({total_cup:.2f})")
