@@ -7,7 +7,7 @@ import datetime
 
 from .. import calculo_cobro as cc
 from ..rutas import consulta
-from ..ventas_datos import registrar_venta_en_db
+from ..ventas_datos import registrar_venta_en_db, utilidad_del_carrito
 
 
 class CobroMixin:
@@ -446,15 +446,7 @@ class CobroMixin:
             self.label_vuelto_moneda.config(text="")
 
     def _utilidad_del_carrito(self):
-        """Diferencia entre lo que se cobra y lo que costó, sumando el carrito."""
-        utilidad = 0.0
-        with consulta() as (_conn, cursor):
-            for item in self.carrito:
-                cursor.execute("SELECT precio_compra FROM productos WHERE id = ?", (item["id"],))
-                fila = cursor.fetchone()
-                if fila:
-                    utilidad += (item["precio"] - fila[0]) * item["cantidad"]
-        return utilidad
+        return utilidad_del_carrito(self.carrito)
 
     def _leer_pago_para_cerrar(self, total_cup):
         """Recoge lo tecleado al cerrar la venta. Devuelve (Pago, error)."""

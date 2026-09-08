@@ -123,19 +123,217 @@ class ElCobroPorHttpDaLoMismoQueLaCaja(unittest.TestCase):
         self.assertAlmostEqual(r.json()["falta_cup"], 1000.0)
 
 
-@unittest.skipUnless(HAY_API, "hace falta fastapi (ver requisitos-api.txt)")
-class LaApiNoEscribe(unittest.TestCase):
-    """Ninguna ruta de datos debe permitir modificar nada."""
+# Rutas que tocan la base. Están escritas a mano a propósito: si alguien añade
+# una nueva y no la apunta aquí, la prueba falla y le obliga a acordarse de que
+# esta API no puede salir a internet tal cual.
+RUTAS_QUE_ESCRIBEN = {
+    ("POST", "/ventas"),
+    ("POST", "/deudas/{venta_id}/cobros"),
+    ("POST", "/productos"),
+    ("PUT", "/productos/{producto_id}"),
+    ("DELETE", "/productos/{producto_id}"),
+    ("POST", "/inventario/salidas"),
+    ("POST", "/inventario/mermas"),
+    ("POST", "/caja/entradas"),
+    ("POST", "/caja/salidas"),
+    ("PUT", "/caja/fondo/{fecha}"),
+    ("POST", "/cambio"),
+    ("DELETE", "/historial/{registro_id}"),
+}
 
-    def test_solo_hay_lectura_en_los_datos(self):
+
+@unittest.skipUnless(HAY_API, "hace falta fastapi (ver requisitos-api.txt)")
+class QueRutasEscriben(unittest.TestCase):
+
+    def _rutas_que_modifican(self):
+        encontradas = set()
         for ruta in app.routes:
-            metodos = getattr(ruta, "methods", set())
             camino = getattr(ruta, "path", "")
             if camino.startswith("/cobro"):
                 continue  # aritmética pura, no toca la base
-            self.assertFalse(
-                metodos & {"POST", "PUT", "PATCH", "DELETE"},
-                f"{camino} expone {metodos}: los datos son de sólo lectura")
+            for metodo in getattr(ruta, "methods", set()):
+                if metodo in ("POST", "PUT", "PATCH", "DELETE"):
+                    encontradas.add((metodo, camino))
+        return encontradas
+
+    def test_no_hay_escrituras_sin_declarar(self):
+        nuevas = self._rutas_que_modifican() - RUTAS_QUE_ESCRIBEN
+        self.assertEqual(
+            nuevas, set(),
+            "Rutas que escriben y no están declaradas en RUTAS_QUE_ESCRIBEN. "
+            "Recuerda que esta API no puede exponerse a internet tal cual.")
+
+    def test_las_declaradas_siguen_existiendo(self):
+        self.assertEqual(RUTAS_QUE_ESCRIBEN - self._rutas_que_modifican(), set())
+
+    def test_consultar_nunca_modifica(self):
+        for metodo, camino in self._rutas_que_modifican():
+            if camino in ("/salud", "/corte/{fecha}"):
+                self.fail(f"{camino} deberia ser de solo lectura")
+
+
+@unittest.skipUnless(HAY_API, "hace falta fastapi (ver requisitos-api.txt)")
+class LaApiEscribeDeVerdad(unittest.TestCase):
+    """Escrituras contra una COPIA de la base, nunca contra la real.
+
+    `fijar_directorio_base` existe justo para esto: se copian tienda.db y
+    config_caja.json a una carpeta temporal, se trabaja allí y al terminar se
+    borra y se devuelve el programa a su sitio.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import shutil
+        import tempfile
+
+        from lddl import rutas
+
+        cls.rutas = rutas
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cls.temporal = tempfile.mkdtemp(prefix="mitienda-pruebas-")
+        for nombre in ("tienda.db", "config_caja.json"):
+            origen = os.path.join(raiz, nombre)
+            if os.path.exists(origen):
+                shutil.copy2(origen, os.path.join(cls.temporal, nombre))
+        rutas.fijar_directorio_base(cls.temporal)
+        cls.cliente = TestClient(app)
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+
+        cls.rutas.fijar_directorio_base(None)
+        shutil.rmtree(cls.temporal, ignore_errors=True)
+
+    def test_la_copia_no_es_la_base_real(self):
+        self.assertIn("mitienda-pruebas-", self.rutas.obtener_ruta_db())
+
+    # ---------------------------------------------------------- productos
+
+    def test_alta_edicion_y_baja_de_un_producto(self):
+        alta = self.cliente.post("/productos", json={
+            "nombre": "Producto de prueba", "precio_venta": 100.0, "stock": 5.0})
+        self.assertEqual(alta.status_code, 201, alta.text)
+
+        listado = self.cliente.get("/productos", params={"buscar": "Producto de prueba"}).json()
+        self.assertEqual(len(listado), 1)
+        creado = listado[0]
+        self.assertAlmostEqual(creado["precio"], 100.0)
+
+        edicion = self.cliente.put(f"/productos/{creado['id']}", json={
+            "nombre": "Producto de prueba", "categoria": "", "precio_compra": 60.0,
+            "precio_venta": 150.0, "stock": 5.0, "proveedor": "",
+            "tipo_producto": "unidad", "unidad_medida": "unidad", "fecha_vencimiento": ""})
+        self.assertEqual(edicion.status_code, 200, edicion.text)
+
+        tras_editar = self.cliente.get("/productos", params={"buscar": "Producto de prueba"}).json()
+        self.assertAlmostEqual(tras_editar[0]["precio"], 150.0)
+
+        baja = self.cliente.delete(f"/productos/{creado['id']}")
+        self.assertEqual(baja.status_code, 200, baja.text)
+        self.assertEqual(
+            self.cliente.get("/productos", params={"buscar": "Producto de prueba"}).json(), [])
+
+    def test_no_se_puede_borrar_un_producto_con_ventas(self):
+        r = self.cliente.delete("/productos/3")
+        self.assertEqual(r.status_code, 422)
+
+    # -------------------------------------------------------------- caja
+
+    def test_entrada_y_salida_de_efectivo(self):
+        entrada = self.cliente.post("/caja/entradas",
+                                    json={"moneda": "CUP", "monto": 500.0,
+                                          "descripcion": "prueba"})
+        self.assertEqual(entrada.status_code, 201, entrada.text)
+
+        salida = self.cliente.post("/caja/salidas",
+                                   json={"moneda": "CUP", "monto": 100.0,
+                                         "descripcion": "prueba"})
+        self.assertEqual(salida.status_code, 201, salida.text)
+
+    def test_no_se_puede_sacar_mas_efectivo_del_que_hay(self):
+        r = self.cliente.post("/caja/salidas",
+                              json={"moneda": "CUP", "monto": 9_999_999.0})
+        self.assertEqual(r.status_code, 422)
+        self.assertIn("suficiente", r.json()["detail"].lower())
+
+    def test_fijar_el_fondo_del_dia(self):
+        r = self.cliente.put("/caja/fondo/2026-09-08", json={"fondo": 1500.0})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertAlmostEqual(
+            self.cliente.get("/corte/2026-09-08").json()["fondo_registrado"], 1500.0)
+
+    def test_el_fondo_rechaza_una_fecha_mal_escrita(self):
+        self.assertEqual(
+            self.cliente.put("/caja/fondo/manana", json={"fondo": 10.0}).status_code, 422)
+
+    # ------------------------------------------------------------ ventas
+
+    def _stock_de(self, producto_id):
+        for p in self.cliente.get("/productos").json():
+            if p["id"] == producto_id:
+                return p["stock"]
+        self.fail(f"no existe el producto {producto_id}")
+
+    def test_una_venta_completa_descuenta_el_stock(self):
+        antes = self._stock_de(3)
+        r = self.cliente.post("/ventas", json={
+            "carrito": [{"id": 3, "nombre": "Aceite 1000 ml", "cantidad": 2,
+                         "precio": 200.0, "tipo": "unidad", "unidad": "unidad"}],
+            "pago": {"total_cup": 400.0, "efectivo": 500.0},
+        })
+        self.assertEqual(r.status_code, 201, r.text)
+        self.assertIn("venta_id", r.json())
+        self.assertEqual(r.json()["vuelto_texto"], "100.00 CUP")
+        self.assertAlmostEqual(self._stock_de(3), antes - 2)
+
+    def test_una_venta_que_no_se_paga_entera_se_rechaza(self):
+        antes = self._stock_de(3)
+        r = self.cliente.post("/ventas", json={
+            "carrito": [{"id": 3, "nombre": "Aceite 1000 ml", "cantidad": 2,
+                         "precio": 200.0}],
+            "pago": {"total_cup": 400.0, "efectivo": 100.0},
+        })
+        self.assertEqual(r.status_code, 422)
+        self.assertAlmostEqual(self._stock_de(3), antes, msg="no debio tocar el stock")
+
+    def test_una_venta_a_deuda_no_exige_pago(self):
+        r = self.cliente.post("/ventas", json={
+            "carrito": [{"id": 3, "nombre": "Aceite 1000 ml", "cantidad": 1,
+                         "precio": 200.0}],
+            "pago": {"total_cup": 200.0},
+            "es_deuda": True,
+            "observaciones": "cliente conocido",
+        })
+        self.assertEqual(r.status_code, 201, r.text)
+
+    def test_el_carrito_vacio_se_rechaza(self):
+        r = self.cliente.post("/ventas", json={
+            "carrito": [], "pago": {"total_cup": 0.0}})
+        self.assertEqual(r.status_code, 422)
+
+    # ------------------------------------------------------- inventario
+
+    def test_una_merma_mayor_que_el_stock_se_rechaza(self):
+        r = self.cliente.post("/inventario/mermas",
+                              json={"producto_id": 3, "cantidad": 99999.0})
+        self.assertEqual(r.status_code, 422)
+        self.assertIn("insuficiente", r.json()["detail"].lower())
+
+    def test_una_merma_normal_descuenta_el_stock(self):
+        antes = self._stock_de(3)
+        r = self.cliente.post("/inventario/mermas",
+                              json={"producto_id": 3, "cantidad": 1.0,
+                                    "motivo": "prueba"})
+        self.assertEqual(r.status_code, 201, r.text)
+        self.assertAlmostEqual(self._stock_de(3), antes - 1)
+
+    # ----------------------------------------------------------- cambio
+
+    def test_comprar_divisa(self):
+        r = self.cliente.post("/cambio", json={
+            "tipo": "compra", "moneda": "USD", "cantidad": 10.0, "tasa": 400.0})
+        self.assertEqual(r.status_code, 201, r.text)
 
 
 if __name__ == "__main__":

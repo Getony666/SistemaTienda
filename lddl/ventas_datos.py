@@ -395,6 +395,22 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
 
         return resultados
 
+def utilidad_del_carrito(carrito):
+    """Cuánto se gana con esta venta: lo que se cobra menos lo que costó.
+
+    Vivía dentro de la pantalla de ventas, pero necesita la base -el precio de
+    compra de cada producto- y la usan tanto la ventana como la API.
+    """
+    utilidad = 0.0
+    with consulta() as (_conexion, cursor):
+        for item in carrito:
+            cursor.execute("SELECT precio_compra FROM productos WHERE id = ?", (item["id"],))
+            fila = cursor.fetchone()
+            if fila:
+                utilidad += (item["precio"] - fila[0]) * item["cantidad"]
+    return utilidad
+
+
 def registrar_venta_en_db(carrito, datos):
     """Escribe una venta y todos sus efectos colaterales en una sola transacción.
 
