@@ -264,3 +264,106 @@ input.numero { font-variant-numeric: tabular-nums; text-align: right; }
 .aviso.bien { background: rgba(46,158,107,.12); color: #1B6B47; border: 1px solid rgba(46,158,107,.25); }
 
 @keyframes entrar { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* ===================================================================
+   Paneles aÃ±adidos: Acciones, Historial, Cambio de Divisa y Corte
+   =================================================================== */
+
+.cuerpo.una-columna { grid-template-columns: minmax(0, 1fr); }
+
+/* ------------------------------------------------------- acciones */
+
+.acciones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.acciones .boton {
+  padding: 13px 8px;
+  text-align: center;
+  line-height: 1.3;
+  font-size: 12.5px;
+  white-space: normal;
+}
+.boton.teal { background: var(--verde); }
+.boton.naranja { background: var(--naranja); }
+.boton.neutro { background: var(--suave); }
+.boton.activo { box-shadow: 0 0 0 3px rgba(31, 90, 76, .22); }
+
+.formulario {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: var(--radio);
+  background: rgba(255, 255, 255, .55);
+  border: 1px solid var(--borde);
+  animation: entrar 160ms ease-out;
+}
+.formulario h3 {
+  margin: 0 0 12px;
+  font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--suave);
+}
+
+.campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.campo.ancho { grid-column: 1 / -1; }
+.campo > span { font-size: 12px; color: var(--suave); }
+
+.nota-form {
+  grid-column: 1 / -1;
+  margin: 4px 0 0; font-size: 12px; color: var(--tenue); font-style: italic;
+}
+
+/* ------------------------------------------------------ historial */
+
+.desplazable.alto { max-height: 340px; }
+.recortado { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabla tr.deuda td { color: var(--rojo); }
+.cifra-linea {
+  margin: 0; font-size: 17px; font-weight: 700;
+  color: var(--verde-oscuro); font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------- corte */
+
+.resumen { display: flex; flex-direction: column; gap: 8px; }
+
+.resumen-fila {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255, 255, 255, .62);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 12px 16px 12px 0;
+  overflow: hidden;
+  transition: background var(--transicion);
+}
+.resumen-fila:hover { background: rgba(255, 255, 255, .85); }
+
+.resumen-fila .franja { width: 5px; align-self: stretch; border-radius: 3px 0 0 3px; }
+.resumen-fila .titulo { font-weight: 700; font-size: 13.5px; }
+.resumen-fila .cuenta { color: var(--tenue); font-size: 12.5px; }
+.resumen-fila .importe {
+  margin-left: auto; font-size: 18px; font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+
+.resumen-fila.grande { padding-top: 16px; padding-bottom: 16px; }
+.resumen-fila.grande .franja { width: 9px; }
+.resumen-fila.grande .importe { font-size: 25px; }
+
+.resumen-fila.verde .franja { background: var(--verde-claro); }
+.resumen-fila.verde .titulo, .resumen-fila.verde .importe { color: var(--verde-claro); }
+.resumen-fila.morado .franja { background: var(--morado); }
+.resumen-fila.morado .titulo, .resumen-fila.morado .importe { color: var(--morado); }
+.resumen-fila.ocre .franja { background: var(--ocre); }
+.resumen-fila.ocre .titulo, .resumen-fila.ocre .importe { color: var(--ocre); }
+.resumen-fila.naranja .franja { background: var(--naranja); }
+.resumen-fila.naranja .titulo, .resumen-fila.naranja .importe { color: var(--naranja); }
+.resumen-fila.teal .franja { background: var(--verde-oscuro); }
+.resumen-fila.teal .titulo, .resumen-fila.teal .importe { color: var(--verde-oscuro); }
+.resumen-fila.neutro .franja { background: var(--suave); }
+.resumen-fila.neutro .titulo, .resumen-fila.neutro .importe { color: var(--suave); }
+.resumen-fila.divisas .franja { background: var(--verde); }
+.resumen-fila.divisas .titulo, .resumen-fila.divisas .importe { color: var(--verde); }
+.resumen-fila.divisas .importe { font-size: 15px; }
+
