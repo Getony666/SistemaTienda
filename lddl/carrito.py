@@ -99,6 +99,18 @@ def agregar_unidad(carrito, producto_id, nombre, precio, stock, tipo="unidad", u
     return nuevo, None
 
 
+def disponible_para_anadir(carrito, producto_id, stock):
+    """Cuánto más se puede añadir de un producto sin pasarse del almacén.
+
+    Descuenta lo que ya está en el carrito, que todavía no ha salido del stock
+    porque la venta no se ha cerrado.
+    """
+    i = buscar(carrito, producto_id)
+    ya_en_carrito = carrito[i]["cantidad"] if i is not None else 0
+    queda = stock - ya_en_carrito
+    return queda if queda > 0 else 0.0
+
+
 def agregar_cantidad(carrito, producto_id, nombre, cantidad, precio, stock,
                      tipo="unidad", unidad="unidad"):
     """Añade una cantidad concreta, la que se teclea en el diálogo.
@@ -106,13 +118,13 @@ def agregar_cantidad(carrito, producto_id, nombre, cantidad, precio, stock,
     Si el producto ya está en el carrito, las dos líneas se funden y el precio
     pasa a ser el promedio ponderado.
 
-    OJO: el stock se comprueba contra la cantidad que entra, no contra la suma
-    con lo que ya hubiera en el carrito. Es el comportamiento que tiene hoy la
-    aplicación y se conserva tal cual; ver `pruebas/test_carrito.py`.
+    El stock se comprueba contra la SUMA con lo que ya hubiera en el carrito:
+    de lo contrario se podían meter 3 y luego 3 más de un producto del que
+    quedan 4, y la venta dejaba el almacén en negativo.
     """
     if cantidad <= 0:
         return carrito, "cantidad_invalida"
-    if cantidad > stock:
+    if cantidad > disponible_para_anadir(carrito, producto_id, stock):
         return carrito, "stock_insuficiente"
 
     unitario = precio_unitario(cantidad, precio, tipo)

@@ -117,18 +117,33 @@ class AgregarUnaCantidad(unittest.TestCase):
         carro, _ = c.agregar_cantidad(c.vaciar(), cantidad=0.3, stock=5, **QUESO)
         self.assertAlmostEqual(c.total(carro), 285.0)  # 0.3 x 950 = 285, ya multiplo de 5
 
-    def test_HOY_se_puede_pasar_del_stock_acumulando(self):
-        """Comportamiento actual, no deseado: documentado para poder cambiarlo.
+    def test_no_se_puede_pasar_del_stock_acumulando(self):
+        """El stock se mide contra la suma, no contra la cantidad que entra.
 
-        Al acumular sobre una línea que ya existe, el stock se comprueba contra
-        la cantidad que entra y no contra la suma. Con stock 8 se pueden meter
-        5 y luego 5 más, y el carrito acaba con 10.
+        Antes se podían meter 5 y luego 5 más de algo de lo que quedaban 8, y
+        la venta dejaba el almacén en negativo.
         """
         carro, m1 = c.agregar_cantidad(c.vaciar(), cantidad=5, stock=8, **ACEITE)
         carro, m2 = c.agregar_cantidad(carro, cantidad=5, stock=8, **ACEITE)
         self.assertIsNone(m1)
-        self.assertIsNone(m2)
-        self.assertEqual(carro[0]["cantidad"], 10)  # más de las 8 que hay
+        self.assertEqual(m2, "stock_insuficiente")
+        self.assertEqual(carro[0]["cantidad"], 5)
+
+    def test_se_puede_completar_justo_hasta_el_stock(self):
+        carro, _ = c.agregar_cantidad(c.vaciar(), cantidad=5, stock=8, **ACEITE)
+        carro, motivo = c.agregar_cantidad(carro, cantidad=3, stock=8, **ACEITE)
+        self.assertIsNone(motivo)
+        self.assertEqual(carro[0]["cantidad"], 8)
+
+    def test_lo_que_queda_por_anadir_descuenta_el_carrito(self):
+        vacio = c.vaciar()
+        self.assertAlmostEqual(c.disponible_para_anadir(vacio, 3, 8), 8.0)
+        carro, _ = c.agregar_cantidad(vacio, cantidad=5, stock=8, **ACEITE)
+        self.assertAlmostEqual(c.disponible_para_anadir(carro, 3, 8), 3.0)
+
+    def test_lo_que_queda_por_anadir_nunca_es_negativo(self):
+        carro = [c.linea_nueva(3, "Aceite", 10, 200.0)]
+        self.assertEqual(c.disponible_para_anadir(carro, 3, 8), 0.0)
 
 
 class CambiarYQuitar(unittest.TestCase):

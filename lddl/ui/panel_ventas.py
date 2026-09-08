@@ -650,8 +650,12 @@ class PanelVentasMixin:
                 self.mostrar_mensaje("error", "Error", "La cantidad debe ser mayor que 0")
                 return
             if motivo == "stock_insuficiente":
+                # Al editar una línea se sustituye la cantidad, así que cabe todo
+                # el stock. Al añadir, hay que descontar lo que ya lleva el carrito.
+                disponible = (stock if indice_carrito is not None
+                              else ca.disponible_para_anadir(self.carrito, producto_id, stock))
                 self.mostrar_mensaje("error", "Error",
-                                     f"No hay suficiente stock. Disponible: {stock:.2f} {unidad}")
+                                     f"No hay suficiente stock. Disponible: {disponible:.2f} {unidad}")
                 return
             if motivo:
                 self.mostrar_mensaje("error", "Error", ca.MOTIVOS.get(motivo, motivo))
