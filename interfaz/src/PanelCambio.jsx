@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, dinero, enviar } from "./api";
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+// Fecha local, no UTC: ver el comentario largo en PanelCorte.jsx. Con
+// toISOString() el efectivo en caja se vaciaba solo cada noche.
+const hoy = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 export default function PanelCambio() {
   const [tipo, setTipo] = useState("compra");

@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, dinero, enviar } from "./api";
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+// La fecha se arma a mano, campo a campo. `toISOString()` da la fecha en
+// UTC, y Cuba va cuatro o cinco horas por detrás: con él, toda venta hecha
+// pasadas las ocho de la noche caía en el día siguiente, y la caja se
+// cuadraba contra un día vacío. El programa guarda con la hora local
+// (datetime.now()), así que aquí hay que preguntar por la local también.
+const comoFecha = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const hoy = () => comoFecha(new Date());
 const ayer = () => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return comoFecha(d);
 };
 
 // Mismo código de color por concepto que en la ventana de tkinter.
