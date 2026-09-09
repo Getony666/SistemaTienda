@@ -4,6 +4,7 @@ import DialogoDeuda from "./DialogoDeuda";
 
 const TIPOS = [
   ["todos", "Todos"], ["ventas", "Ventas"], ["deudas", "Deudas"],
+  ["mensajeria", "Mensajería"],
   ["cambio", "Cambio de Divisa"], ["entrada_efectivo", "Entrada de Efectivo"],
   ["salida_efectivo", "Salida de Efectivo"], ["salidas", "Salidas"],
   ["merma", "Merma"], ["entrada_producto", "Entrada de Producto"],
@@ -14,11 +15,28 @@ const METODOS = [
   ["transferencia", "Transferencia"], ["mixto", "Mixto"],
 ];
 
+// En el detalle estos campos venian como 1 y 0, que no dice nada a quien mira.
+const SI_O_NO = new Set(["es_deuda", "es_mensajeria", "pagada", "cancelada"]);
+
+const comoTexto = (campo, valor) => {
+  if (SI_O_NO.has(campo)) return valor ? "Sí" : "No";
+  return String(valor);
+};
+
+// La mensajeria sólo tiene sentido en ventas y deudas: un cambio de divisa
+// no es ni deja de ser mensajeria, y poner "No" ahi mentiria.
+const marcaMensajeria = (r) =>
+  r.es_mensajeria === undefined || r.es_mensajeria === null
+    ? "—"
+    : (r.es_mensajeria ? "Sí" : "No");
+
 export default function PanelHistorial() {
   const [registros, setRegistros] = useState([]);
   const [fecha, setFecha] = useState("");
   const [tipo, setTipo] = useState("todos");
   const [metodo, setMetodo] = useState("todos");
+  const [producto, setProducto] = useState("");
+  const [productos, setProductos] = useState([]);
   const [elegido, setElegido] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [cargando, setCargando] = useState(false);
@@ -30,6 +48,7 @@ export default function PanelHistorial() {
     try {
       const parametros = new URLSearchParams({ tipo, metodo });
       if (fecha) parametros.set("fecha", fecha);
+      if (producto) parametros.set("producto_id", producto);
       setRegistros(await api(`/ventas?${parametros}`));
       setElegido(null);
     } catch (e) {
@@ -37,9 +56,14 @@ export default function PanelHistorial() {
     } finally {
       setCargando(false);
     }
-  }, [fecha, tipo, metodo]);
+  }, [fecha, tipo, metodo, producto]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // La lista del desplegable de productos se pide una sola vez.
+  useEffect(() => {
+    api("/productos").then(setProductos).catch(() => setProductos([]));
+  }, []);
 
   async function revertir() {
     if (!elegido) return;
@@ -94,7 +118,28 @@ export default function PanelHistorial() {
           <select value={metodo} onChange={(e) => setMetodo(e.target.value)}>
             {METODOS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
           </select>
+          <label style={{ marginLeft: 10 }}>Producto</label>
+          <select value={producto} onChange={(e) => setProducto(e.target.value)}
+                  style={{ maxWidth: 230 }}>
+            <option value="">Todos</option>
+            {productos.map((p) => (
+              <option key={p.id} value={p.id}>{p.nombre}</option>
+            ))}
+          </select>
+          {producto && (
+            <button className="boton fantasma" onClick={() => setProducto("")}>
+              Quitar producto
+            </button>
+          )}
         </div>
+
+        {producto && (
+          <p className="nota-filtro">
+            Filtrando por producto: se muestran sus ventas, deudas, mermas,
+            salidas y altas o cambios de ficha. Los movimientos de caja y los
+            cambios de divisa no salen, porque no llevan producto.
+          </p>
+        )}
 
         {aviso && <div className={`aviso ${aviso.tipo}`}>{aviso.texto}</div>}
       </section>
@@ -112,7 +157,8 @@ export default function PanelHistorial() {
                 <tr>
                   <th className="centro">ID</th><th>Fecha</th><th>Tipo</th>
                   <th>Producto</th><th className="derecha">Monto</th>
-                  <th>Método</th><th>Observaciones</th>
+                  <th>Método</th><th className="centro">Mensajería</th>
+                  <th>Observaciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,6 +175,7 @@ export default function PanelHistorial() {
                     <td>{r.producto}</td>
                     <td className="derecha">{dinero(r.monto)} {r.moneda}</td>
                     <td>{r.metodo_pago}</td>
+                    <td className="centro">{marcaMensajeria(r)}</td>
                     <td className="recortado" title={r.observaciones}>{r.observaciones}</td>
                   </tr>
                 ))}
@@ -148,7 +195,7 @@ export default function PanelHistorial() {
               {Object.entries(elegido.detalle_extra ?? {}).map(([campo, valor]) => (
                 <tr key={campo}>
                   <td style={{ width: 260, color: "var(--suave)" }}>{campo}</td>
-                  <td>{String(valor)}</td>
+                  <td>{comoTexto(campo, valor)}</td>
                 </tr>
               ))}
               {!elegido.detalle_extra && (

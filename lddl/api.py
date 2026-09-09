@@ -122,7 +122,7 @@ def listar_productos(buscar: str = Query("", description="Texto a buscar; vacío
 def listar_ventas(
     fecha: str = Query(None, description="AAAA-MM-DD; sin ella, todas"),
     metodo: str = Query("todos", description="todos, efectivo, transferencia o mixto"),
-    tipo: str = Query("todos", description="todos, ventas, deudas, cambio, merma..."),
+    tipo: str = Query("todos", description="todos, ventas, deudas, mensajeria, cambio, merma..."),
     producto_id: int = Query(None, description="Sólo los registros de este producto"),
 ):
     """Historial de ventas y movimientos, con los mismos filtros que la app."""

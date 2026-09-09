@@ -108,7 +108,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             if fila_producto:
                 producto_nombre = fila_producto[0]
 
-        if filtro_tipo in ("todos", "ventas", "deudas"):
+        if filtro_tipo in ("todos", "ventas", "deudas", "mensajeria"):
             sentencia = '''
                 SELECT v.id, v.fecha, v.total, v.metodo_pago, v.cancelada, v.es_deuda, v.pagada, v.saldo_pendiente,
                        v.metodo_pago_real, v.observaciones, v.moneda_pago, v.tasa_cambio, v.pago_texto, v.vuelto_texto, v.es_mensajeria
@@ -129,6 +129,11 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                 sentencia += " AND v.es_deuda = 1"
             elif filtro_tipo == "ventas":
                 sentencia += " AND v.es_deuda = 0"
+            elif filtro_tipo == "mensajeria":
+                # La mensajería no es un tipo aparte de venta: es una marca que
+                # puede llevar cualquiera, deudas incluidas. Por eso filtra por
+                # la columna y no toca es_deuda.
+                sentencia += " AND v.es_mensajeria = 1"
             if producto_id is not None:
                 sentencia += " AND EXISTS (SELECT 1 FROM detalles_venta dv WHERE dv.venta_id = v.id AND dv.producto_id = ?)"
                 params.append(producto_id)
@@ -176,6 +181,9 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "metodo_pago": metodo_pago_mostrar,
                     "producto": _texto_productos(productos_de_venta.get(id_reg, [])),
                     "observaciones": obs,
+                    # Sube al primer nivel para que la tabla del historial pueda
+                    # pintar su columna sin abrir el detalle de cada fila.
+                    "es_mensajeria": 1 if es_mensajeria else 0,
                     "detalle_extra": detalle_extra
                 })
 

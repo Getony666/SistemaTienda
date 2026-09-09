@@ -3,6 +3,9 @@ import { dinero, enviar } from "./api";
 
 const METODOS = ["Efectivo", "Transferencia", "Mixto"];
 
+// Los mismos billetes que en el panel de Ventas: el vuelto se arma sumando.
+const DENOMINACIONES = [1, 5, 10, 20, 50, 100];
+
 export default function DialogoDeuda({ deuda, alCerrar, alCobrar }) {
   const [moneda, setMoneda] = useState("CUP");
   const [tasa, setTasa] = useState("");
@@ -66,6 +69,33 @@ export default function DialogoDeuda({ deuda, alCerrar, alCobrar }) {
   const hayAlgoQueCobrar =
     (Number(efectivo) || 0) + (Number(transferencia) || 0) + (Number(efectivoCup) || 0) > 0;
 
+  // ---------------------------------------------------------- vuelto mixto
+  const tasaNumero = Number(tasa) || 0;
+  const vueltoCup = simulacion?.vuelto_cup ?? 0;
+  const topeEnMoneda = tasaNumero > 0 ? vueltoCup / tasaNumero : 0;
+
+  const cabeOtroBillete = (valor) =>
+    ((Number(vueltoMoneda) || 0) + valor) * tasaNumero <= vueltoCup + 1e-9;
+
+  const sumarBillete = (valor) => {
+    const nuevo = (Number(vueltoMoneda) || 0) + valor;
+    if (nuevo * tasaNumero > vueltoCup + 1e-9) return;
+    setVueltoMoneda(nuevo.toFixed(2));
+  };
+
+  // El reparto real del cambio. `vuelto_en_cup_a_entregar` es lo que sale de
+  // la caja en CUP; lo demás se devuelve en billetes de la divisa.
+  const textoDelVuelto = () => {
+    if (!simulacion || vueltoCup <= 0) return "0.00 CUP";
+    const enCup = simulacion.vuelto_en_cup_a_entregar ?? vueltoCup;
+    const enMoneda = simulacion.vuelto_moneda ?? 0;
+    if (enMoneda > 0 && enCup > 0.005) {
+      return `${dinero(enMoneda)} ${moneda} + ${dinero(enCup)} CUP`;
+    }
+    if (enMoneda > 0) return `${dinero(enMoneda)} ${moneda}`;
+    return `${dinero(enCup)} CUP`;
+  };
+
   return (
     <div className="velo" onClick={(e) => e.target === e.currentTarget && alCerrar()}>
       <div className="modal" role="dialog" aria-label="Pagar deuda">
@@ -116,20 +146,43 @@ export default function DialogoDeuda({ deuda, alCerrar, alCobrar }) {
               <input className="numero" value={transferencia}
                      onChange={(e) => setTransferencia(e.target.value)} /></label>
           )}
-          {enDivisa && simulacion?.vuelto_cup > 0 && (
-            <label className="campo"><span>Vuelto en {moneda}</span>
-              <input className="numero" value={vueltoMoneda}
-                     onChange={(e) => setVueltoMoneda(e.target.value)} /></label>
-          )}
         </div>
+
+        {/* Vuelto mixto: parte en divisa, el resto en CUP. Sin esto sólo se
+            podía teclear el número, y el reparto no se veía por ninguna parte. */}
+        {enDivisa && vueltoCup > 0 && (
+          <div className="adicional">
+            <span className="titulo-bloque">
+              Vuelto en {moneda} <em>(el resto se devuelve en CUP)</em>
+            </span>
+            <div className="fila">
+              <input className="numero" style={{ width: 110 }} value={vueltoMoneda}
+                     onChange={(e) => setVueltoMoneda(e.target.value)} />
+              <div className="denominaciones">
+                {DENOMINACIONES.map((v) => (
+                  <button key={v} type="button" className="billete"
+                          disabled={!cabeOtroBillete(v)}
+                          title={`Añadir ${v} ${moneda} al vuelto`}
+                          onClick={() => sumarBillete(v)}>+{v}</button>
+                ))}
+                <button type="button" className="billete limpiar"
+                        disabled={!vueltoMoneda}
+                        onClick={() => setVueltoMoneda("")}>Limpiar</button>
+              </div>
+            </div>
+            <span className="nota">
+              Como mucho {dinero(topeEnMoneda)} {moneda} a esta tasa
+            </span>
+          </div>
+        )}
 
         {simulacion && hayAlgoQueCobrar && (
           <div className="vuelto" style={{ marginTop: 14 }}>
             {simulacion.pagada === 1 ? (
               <>
                 <strong style={{ color: "var(--suave)", fontSize: 13 }}>Queda pagada</strong>
-                {simulacion.vuelto_cup > 0 && (
-                  <span className="cifra">Vuelto {dinero(simulacion.vuelto_cup)} CUP</span>
+                {vueltoCup > 0 && (
+                  <span className="cifra">Vuelto {textoDelVuelto()}</span>
                 )}
               </>
             ) : (

@@ -2,6 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { dinero, cantidad as fmtCantidad, enviar } from "./api";
 import PanelAcciones from "./PanelAcciones";
 
+// Los billetes que se ven en la calle. Sirven para armar el vuelto en divisa
+// sin teclear: la cajera va sumando los que tiene a mano.
+const DENOMINACIONES = [1, 5, 10, 20, 50, 100];
+
 // El carrito se llena igual siempre; lo que cambia es qué se hace con él.
 const MODOS = {
   venta: {
@@ -44,6 +48,12 @@ export default function PanelVentas({ productos, recargarProductos }) {
   const [tasa, setTasa] = useState("1.00");
   const [efectivo, setEfectivo] = useState("");
   const [transferencia, setTransferencia] = useState("");
+
+  // Pagando en divisa, el CUP que se pone encima para llegar al total, y la
+  // parte del cambio que se devuelve en la propia divisa.
+  const [cupEfectivo, setCupEfectivo] = useState("");
+  const [cupTransferencia, setCupTransferencia] = useState("");
+  const [vueltoMoneda, setVueltoMoneda] = useState("");
 
   const [vuelto, setVuelto] = useState(null);
   const [aviso, setAviso] = useState(null);
@@ -90,25 +100,41 @@ export default function PanelVentas({ productos, recargarProductos }) {
     poner();
   };
 
+  // Lo que se manda a cobrar. Un solo sitio, para que la simulación del
+  // vuelto y la venta que se guarda no puedan discrepar.
+  const datosDelPago = () => ({
+    total_cup: total,
+    moneda,
+    tasa: Number(tasa) || 0,
+    efectivo: Number(efectivo) || 0,
+    transferencia: Number(transferencia) || 0,
+    cup_efectivo: Number(cupEfectivo) || 0,
+    cup_transferencia: Number(cupTransferencia) || 0,
+    vuelto_en_moneda: Number(vueltoMoneda) || 0,
+    solo_transferencia: soloTransferencia,
+  });
+
   // El vuelto se lo pedimos a la misma función que usa la caja de tkinter.
   useEffect(() => {
     if (!esVenta || total <= 0) { setVuelto(null); return; }
     const id = setTimeout(async () => {
       try {
-        setVuelto(await enviar("/cobro/vuelto", {
-          total_cup: total,
-          moneda,
-          tasa: Number(tasa) || 0,
-          efectivo: Number(efectivo) || 0,
-          transferencia: Number(transferencia) || 0,
-          solo_transferencia: soloTransferencia,
-        }));
+        setVuelto(await enviar("/cobro/vuelto", datosDelPago()));
       } catch (e) {
         setAviso({ tipo: "error", texto: e.message });
       }
     }, 120);
     return () => clearTimeout(id);
-  }, [esVenta, total, moneda, tasa, efectivo, transferencia, soloTransferencia]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esVenta, total, moneda, tasa, efectivo, transferencia,
+      cupEfectivo, cupTransferencia, vueltoMoneda, soloTransferencia]);
+
+  // Al cambiar de moneda no puede quedar arrastrado lo tecleado en la otra:
+  // un "vuelto en USD" con la venta ya en CUP descuadraba la caja.
+  useEffect(() => {
+    setEfectivo(""); setTransferencia("");
+    setCupEfectivo(""); setCupTransferencia(""); setVueltoMoneda("");
+  }, [moneda]);
 
   const agregar = (p) => {
     if (p.stock <= 0) {
@@ -151,6 +177,7 @@ export default function PanelVentas({ productos, recargarProductos }) {
 
   const limpiar = () => {
     setCarrito([]); setEfectivo(""); setTransferencia("");
+    setCupEfectivo(""); setCupTransferencia(""); setVueltoMoneda("");
     setSoloTransferencia(false); setMensajeria(false); setDeuda(false);
     setObservaciones(""); setMoneda("CUP"); setTasa("1.00");
     setModo("venta"); setMotivo(""); setVuelto(null);
@@ -174,14 +201,7 @@ export default function PanelVentas({ productos, recargarProductos }) {
         r = await enviar("/ventas", {
           carrito: carrito.map(({ id, nombre, cantidad, precio, tipo, unidad }) =>
             ({ id, nombre, cantidad, precio, tipo, unidad })),
-          pago: {
-            total_cup: total,
-            moneda,
-            tasa: Number(tasa) || 1,
-            efectivo: Number(efectivo) || 0,
-            transferencia: Number(transferencia) || 0,
-            solo_transferencia: soloTransferencia,
-          },
+          pago: { ...datosDelPago(), tasa: Number(tasa) || 1 },
           es_deuda: deuda,
           es_mensajeria: mensajeria,
           observaciones,
@@ -227,8 +247,27 @@ export default function PanelVentas({ productos, recargarProductos }) {
     }
   };
 
+  // ---------------------------------------------------------- vuelto mixto
+  const enDivisa = esVenta && !deuda && !soloTransferencia && moneda !== "CUP";
+  const tasaNumero = Number(tasa) || 0;
+  const vueltoCup = vuelto?.vuelto_cup ?? 0;
+
+  // Cuánta divisa cabe en el vuelto a esta tasa. El resto va en CUP.
+  const topeEnMoneda = tasaNumero > 0 ? vueltoCup / tasaNumero : 0;
+
+  const cabeOtroBillete = (valor) =>
+    ((Number(vueltoMoneda) || 0) + valor) * tasaNumero <= vueltoCup + 1e-9;
+
+  const sumarBillete = (valor) => {
+    const nuevo = (Number(vueltoMoneda) || 0) + valor;
+    if (nuevo * tasaNumero > vueltoCup + 1e-9) return;
+    setVueltoMoneda(nuevo.toFixed(2));
+  };
+
+  // Un vuelto en divisa que se pasa deja la venta sin poder cerrarse: el
+  // cálculo devuelve error y no hay reparto que guardar.
   const puedeConfirmar = carrito.length > 0 && !guardando &&
-    (!esVenta || deuda || vuelto?.cubre);
+    (!esVenta || deuda || (vuelto?.cubre && !vuelto?.error));
 
   return (
     <div className="cuerpo">
@@ -400,16 +439,85 @@ export default function PanelVentas({ productos, recargarProductos }) {
                   </>
                 )}
               </div>
+
+              {/* La divisa rara vez cuadra justa: lo que falta se completa en
+                  CUP, y esos CUP entran en caja como efectivo o transferencia. */}
+              {enDivisa && (
+                <div className="adicional">
+                  <span className="titulo-bloque">Pago adicional en CUP</span>
+                  <div className="fila">
+                    <label htmlFor="cupef">Efectivo</label>
+                    <input id="cupef" className="numero" style={{ width: 120 }}
+                           value={cupEfectivo}
+                           onChange={(e) => setCupEfectivo(e.target.value)} />
+                    <label htmlFor="cuptr" style={{ marginLeft: 10 }}>Transferencia</label>
+                    <input id="cuptr" className="numero" style={{ width: 120 }}
+                           value={cupTransferencia}
+                           onChange={(e) => setCupTransferencia(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* Vuelto mixto: la cajera reparte el cambio entre divisa y CUP.
+                  Los botones sólo dejan llegar hasta donde alcanza el vuelto. */}
+              {enDivisa && vueltoCup > 0 && (
+                <div className="adicional">
+                  <span className="titulo-bloque">
+                    Vuelto en {moneda} <em>(el resto se devuelve en CUP)</em>
+                  </span>
+                  <div className="fila">
+                    <input className="numero" style={{ width: 120 }}
+                           value={vueltoMoneda}
+                           onChange={(e) => setVueltoMoneda(e.target.value)} />
+                    <div className="denominaciones">
+                      {DENOMINACIONES.map((v) => (
+                        <button key={v} type="button" className="billete"
+                                disabled={!cabeOtroBillete(v)}
+                                title={`Añadir ${v} ${moneda} al vuelto`}
+                                onClick={() => sumarBillete(v)}>+{v}</button>
+                      ))}
+                      <button type="button" className="billete limpiar"
+                              disabled={!vueltoMoneda}
+                              onClick={() => setVueltoMoneda("")}>Limpiar</button>
+                    </div>
+                  </div>
+                  <span className="nota">
+                    Como mucho {fmtCantidad(topeEnMoneda)} {moneda} a esta tasa
+                  </span>
+                </div>
+              )}
             </>
           )}
 
           {esVenta && !deuda && total > 0 && vuelto && (
-            <div className="vuelto">
-              <strong style={{ color: "var(--suave)", fontSize: 13 }}>Vuelto</strong>
-              {vuelto.cubre
-                ? <span className="cifra">{vuelto.texto}</span>
-                : <span className="falta">Faltan {dinero(vuelto.falta_cup)} CUP</span>}
-              {vuelto.resumen_pago && <span className="nota">{vuelto.resumen_pago}</span>}
+            <div className="cobro">
+              {/* Primera línea: la sugerencia. Dice con qué se ha pagado ya y
+                  cuánto falta, para que la cajera lo teclee arriba. */}
+              {(!vuelto.cubre || vuelto.resumen_pago) && (
+                <div className="sugerencia">
+                  {!vuelto.cubre && (
+                    <span className="falta">
+                      Faltan {dinero(vuelto.falta_cup)} CUP
+                      {enDivisa ? " (ponlos en el pago adicional)" : " en efectivo"}
+                    </span>
+                  )}
+                  {vuelto.resumen_pago && <span className="nota">{vuelto.resumen_pago}</span>}
+                </div>
+              )}
+
+              {/* Segunda línea: sólo el vuelto. Nada más puede salir aquí. */}
+              <div className="vuelto">
+                <strong style={{ color: "var(--suave)", fontSize: 13 }}>Vuelto</strong>
+                <span className="cifra">
+                  {vuelto.cubre ? vuelto.texto : "0.00 CUP"}
+                </span>
+              </div>
+
+              {vuelto.error === "vuelto_moneda_excede" && (
+                <div className="aviso error">
+                  El vuelto en {moneda} no puede pasar del vuelto total.
+                </div>
+              )}
             </div>
           )}
 
