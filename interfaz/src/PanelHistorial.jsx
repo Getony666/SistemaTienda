@@ -30,7 +30,7 @@ const marcaMensajeria = (r) =>
     ? "—"
     : (r.es_mensajeria ? "Sí" : "No");
 
-export default function PanelHistorial() {
+export default function PanelHistorial({ puede }) {
   const [registros, setRegistros] = useState([]);
   const [fecha, setFecha] = useState("");
   const [tipo, setTipo] = useState("todos");
@@ -103,10 +103,14 @@ export default function PanelHistorial() {
                  onChange={(e) => setFecha(e.target.value)} />
           <button className="boton fantasma" onClick={() => setFecha("")}>Todas</button>
           <button className="boton" onClick={cargar}>Refrescar</button>
-          <button className="boton naranja" onClick={() => setCobrando(elegido)}
-                  disabled={!elegido || !esDeudaPendiente(elegido)}>Pagar deuda</button>
-          <button className="boton rojo" onClick={revertir}
-                  disabled={!elegido}>Eliminar del historial</button>
+          {puede("cobrar_deudas") && (
+            <button className="boton naranja" onClick={() => setCobrando(elegido)}
+                    disabled={!elegido || !esDeudaPendiente(elegido)}>Pagar deuda</button>
+          )}
+          {puede("eliminar_historial") && (
+            <button className="boton rojo" onClick={revertir}
+                    disabled={!elegido}>Eliminar del historial</button>
+          )}
         </div>
 
         <div className="fila" style={{ marginBottom: 8 }}>
@@ -158,7 +162,7 @@ export default function PanelHistorial() {
                   <th className="centro">ID</th><th>Fecha</th><th>Tipo</th>
                   <th>Producto</th><th className="derecha">Monto</th>
                   <th>Método</th><th className="centro">Mensajería</th>
-                  <th>Observaciones</th>
+                  <th>Usuario</th><th>Observaciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,6 +180,8 @@ export default function PanelHistorial() {
                     <td className="derecha">{dinero(r.monto)} {r.moneda}</td>
                     <td>{r.metodo_pago}</td>
                     <td className="centro">{marcaMensajeria(r)}</td>
+                    {/* Lo anterior a los usuarios no lleva nombre: raya, no vacío. */}
+                    <td>{r.usuario || "—"}</td>
                     <td className="recortado" title={r.observaciones}>{r.observaciones}</td>
                   </tr>
                 ))}

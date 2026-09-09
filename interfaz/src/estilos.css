@@ -289,6 +289,65 @@ input.numero { font-variant-numeric: tabular-nums; text-align: right; }
   font-size: 12px; line-height: 1.5; color: var(--tenue);
 }
 
+/* ======================================================== entrar y permisos */
+
+.puerta {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #EAF1EE, #F6F8F7 55%, #EFF3F1);
+}
+
+.acceso {
+  width: 100%; max-width: 380px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.marca-grande {
+  margin: 0; text-align: center;
+  font-size: 27px; font-weight: 800; letter-spacing: -.02em;
+  color: var(--verde-oscuro);
+}
+.acceso .explicacion {
+  margin: 0; text-align: center;
+  font-size: 13px; line-height: 1.6; color: var(--suave);
+}
+.acceso .campo { width: 100%; }
+.acceso input { width: 100%; box-sizing: border-box; }
+.boton.ancho { width: 100%; text-align: center; padding: 12px 0; font-size: 14.5px; }
+
+/* --- quién está dentro, en la barra --- */
+.nav .quien {
+  margin-left: auto;
+  display: flex; align-items: baseline; gap: 7px;
+  color: #fff; font-size: 13px;
+}
+.nav .quien .rol {
+  padding: 2px 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.nav .salir {
+  margin-left: 12px;
+  padding: 6px 12px; border-radius: var(--radio-chico);
+  border: 1px solid rgba(255, 255, 255, .3);
+  background: transparent; color: #fff;
+  font-size: 12px; cursor: pointer;
+}
+.nav .salir:hover { background: rgba(255, 255, 255, .14); }
+
+/* --- rejilla de permisos --- */
+.tabla.permisos td:first-child { color: var(--suave); }
+.tabla.permisos input[type="checkbox"] {
+  width: 17px; height: 17px; cursor: pointer; accent-color: var(--verde);
+}
+/* Una casilla apagada aquí significa "esto no se toca", no "está prohibido":
+   conviene que se distinga de una simplemente sin marcar. */
+.tabla.permisos input[type="checkbox"]:disabled {
+  cursor: not-allowed; opacity: .5;
+}
+tr.apagado td { opacity: .5; }
+
 .finales { display: flex; gap: 10px; margin-top: 14px; }
 .finales .boton { flex: 1; padding: 12px 0; text-align: center; font-size: 14.5px; }
 

@@ -70,6 +70,39 @@ que demuestran que las cuentas del cobro, del carrito y de las deudas no
 cambiaron al mudarse a React. Si algún día se borran, se borran esas pruebas
 con ellos, y se pierde esa red.
 
+## Usuarios y permisos
+
+La primera vez que se abre el programa en una tienda, pide crear el usuario
+**Admin**. No se reparte ningún PIN de fábrica: si viniera uno puesto, sería
+el mismo en todos los negocios a los que se venda esto, y en el primero que
+alguien lo cuente deja de servir. Cada tienda pone el suyo.
+
+Los permisos de Boss y Empleado se cambian desde el propio programa, en la
+pestaña **Usuarios**, que sólo ve Admin.
+
+**Si en una tienda olvidan el PIN de Admin**, no quedan encerrados:
+
+```
+python restablecer_admin.py
+```
+
+Se ejecuta en la máquina de la tienda, sobre la `tienda.db` que tenga al
+lado, y deja constancia en el historial. No abre ninguna puerta que no
+estuviera abierta: quien tiene el fichero de la base delante siempre pudo
+hacer lo mismo a mano.
+
+### Hasta dónde protege esto
+
+El PIN se guarda cifrado con pbkdf2, así que **no se puede leer** de la base.
+Lo que impide que un Empleado haga de más es la API, que contesta 403 y no
+toca la base: esconder botones en la pantalla es sólo comodidad.
+
+Lo que **no** protege: la base es un fichero al lado del ejecutable, y quien
+pueda editarlo puede saltárselo todo. Para una tienda es suficiente. Para el
+día que el panel del dueño salga a internet, no: entonces la sesión, que hoy
+vive en memoria dentro del proceso, tiene que pasar a ser un identificador
+por cada cliente.
+
 ## Cambiar el nombre para otro negocio
 
 El nombre vive en un solo sitio, `lddl/__init__.py`:

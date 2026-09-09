@@ -35,7 +35,7 @@ const FILAS = [
     total: (r) => r.total_ventas_dia },
 ];
 
-export default function PanelCorte() {
+export default function PanelCorte({ puede }) {
   const [fecha, setFecha] = useState(hoy());
   const [resumen, setResumen] = useState(null);
   const [fondo, setFondo] = useState("");
@@ -78,8 +78,15 @@ export default function PanelCorte() {
           <button className="boton fantasma" onClick={() => setFecha(ayer())}>Ayer</button>
           <button className="boton verde" onClick={() => cargar(fecha)}>Actualizar</button>
         </div>
+        {/* El aviso vive aquí, fuera del bloque del fondo: si estuviera
+            dentro, quien no pueda fijar el fondo no vería los errores de
+            carga, que no tienen nada que ver con el permiso. */}
+        {aviso && <div className={`aviso ${aviso.tipo}`}>{aviso.texto}</div>}
       </section>
 
+      {/* El fondo es dinero que se declara: quien no pueda fijarlo no ve
+          ni el formulario. La API lo impide igual, esto es por comodidad. */}
+      {puede("fondo_caja") && (
       <section className="tarjeta">
         <h2>Fondo de caja del día</h2>
         <div className="fila">
@@ -92,8 +99,8 @@ export default function PanelCorte() {
         <p className="nota-form">
           El fondo sustituye al que hubiera para esa fecha, no se suma.
         </p>
-        {aviso && <div className={`aviso ${aviso.tipo}`}>{aviso.texto}</div>}
       </section>
+      )}
 
       <section className="tarjeta">
         <h2>Resumen del día</h2>

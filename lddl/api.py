@@ -26,15 +26,18 @@ Para levantarla:
 y la documentación interactiva queda en http://127.0.0.1:8000/docs
 """
 
+import contextlib
 import datetime
 import re
 
-from fastapi import FastAPI, HTTPException, Path, Query
+from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 
 from . import NOMBRE_APP
 from . import calculo_cobro as cc
 from . import calculo_deuda as cd
+from . import sesion, usuarios
+from .esquema import preparar_base
 from .caja import (
     cargar_fondo_por_fecha,
     guardar_fondo_por_fecha,
@@ -63,11 +66,43 @@ from .ventas_datos import (
 
 FECHA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
+
+@contextlib.asynccontextmanager
+async def arrancar(_app):
+    """Se ejecuta al levantar el servidor, no al importar el módulo.
+
+    Importar no puede tocar la base: las pruebas importan `app` antes de
+    apuntar a su copia, y crear tablas ahí escribiría en la de verdad.
+    """
+    preparar_base()
+    yield
+
+
 app = FastAPI(
     title=NOMBRE_APP,
     description="Consulta del punto de venta. La caja sigue siendo la que manda.",
     version="1.0.0",
+    lifespan=arrancar,
 )
+
+
+# =========================================================================
+#  PERMISOS
+#
+#  Esconder un botón en la interfaz es una comodidad, no una barrera: quien
+#  sepa la dirección puede llamar a la ruta directamente. Lo que impide de
+#  verdad es esto: la ruta contesta 403 y no toca la base.
+# =========================================================================
+
+def exige(permiso):
+    """Dependencia que corta la ruta si el usuario de ahora no puede."""
+    def guardian():
+        try:
+            sesion.exigir(permiso)
+        except sesion.SinPermiso as sin_permiso:
+            codigo = 401 if not sesion.hay_sesion() else 403
+            raise HTTPException(status_code=codigo, detail=str(sin_permiso))
+    return Depends(guardian)
 
 
 def _validar_fecha(fecha):
@@ -251,7 +286,7 @@ class VentaEntrante(BaseModel):
     observaciones: str = ""
 
 
-@app.post("/ventas", tags=["ventas"], status_code=201)
+@app.post("/ventas", tags=["ventas"], status_code=201, dependencies=[exige("vender")])
 def registrar_venta(venta: VentaEntrante):
     """Cierra una venta y la guarda con todos sus efectos en caja e inventario."""
     carrito = [linea.model_dump() for linea in venta.carrito]
@@ -354,7 +389,7 @@ def simular_cobro_deuda(venta_id: int, abono: AbonoEntrante):
     }
 
 
-@app.post("/deudas/{venta_id}/cobros", tags=["ventas"], status_code=201)
+@app.post("/deudas/{venta_id}/cobros", tags=["ventas"], status_code=201, dependencies=[exige("cobrar_deudas")])
 def cobrar_deuda(venta_id: int, abono: AbonoEntrante):
     """Registra el cobro, total o parcial, de una deuda pendiente.
 
@@ -413,19 +448,19 @@ class ProductoEntrante(BaseModel):
     fecha_vencimiento: str = ""
 
 
-@app.post("/productos", tags=["inventario"], status_code=201)
+@app.post("/productos", tags=["inventario"], status_code=201, dependencies=[exige("crear_producto")])
 def crear_producto(producto: ProductoEntrante):
     """Da de alta un producto."""
     return _resultado(agregar_producto(**producto.model_dump()))
 
 
-@app.put("/productos/{producto_id}", tags=["inventario"])
+@app.put("/productos/{producto_id}", tags=["inventario"], dependencies=[exige("actualizar_producto")])
 def editar_producto(producto_id: int, producto: ProductoEntrante):
     """Cambia los datos de un producto. Los cambios quedan en el historial."""
     return _resultado(actualizar_producto(producto_id, **producto.model_dump()))
 
 
-@app.delete("/productos/{producto_id}", tags=["inventario"])
+@app.delete("/productos/{producto_id}", tags=["inventario"], dependencies=[exige("eliminar_producto")])
 def borrar_producto(producto_id: int):
     """Elimina un producto. No se puede si ya tiene ventas asociadas."""
     return _resultado(eliminar_producto(producto_id))
@@ -440,7 +475,7 @@ class SalidaEntrante(BaseModel):
     motivo: str = "Salida a trabajador"
 
 
-@app.post("/inventario/salidas", tags=["inventario"], status_code=201)
+@app.post("/inventario/salidas", tags=["inventario"], status_code=201, dependencies=[exige("salida_inventario")])
 def crear_salida(salida: SalidaEntrante):
     """Saca producto del almacén y genera la deuda correspondiente."""
     return _resultado(registrar_salida(**salida.model_dump()))
@@ -452,7 +487,7 @@ class MermaEntrante(BaseModel):
     motivo: str = "Merma"
 
 
-@app.post("/inventario/mermas", tags=["inventario"], status_code=201)
+@app.post("/inventario/mermas", tags=["inventario"], status_code=201, dependencies=[exige("merma")])
 def crear_merma(merma: MermaEntrante):
     """Da de baja producto perdido o dañado."""
     return _resultado(registrar_merma(**merma.model_dump()))
@@ -474,7 +509,7 @@ class CarritoDeInventario(BaseModel):
     motivo: str = ""
 
 
-@app.post("/inventario/salidas/carrito", tags=["inventario"], status_code=201)
+@app.post("/inventario/salidas/carrito", tags=["inventario"], status_code=201, dependencies=[exige("salida_inventario")])
 def crear_salida_de_carrito(carrito: CarritoDeInventario):
     """Saca un carrito entero del almacén, a precio de costo.
 
@@ -486,7 +521,7 @@ def crear_salida_de_carrito(carrito: CarritoDeInventario):
         lineas, carrito.motivo or "Salida a trabajador"))
 
 
-@app.post("/inventario/mermas/carrito", tags=["inventario"], status_code=201)
+@app.post("/inventario/mermas/carrito", tags=["inventario"], status_code=201, dependencies=[exige("merma")])
 def crear_merma_de_carrito(carrito: CarritoDeInventario):
     """Da de baja un carrito entero sin cobrar nada.
 
@@ -505,13 +540,13 @@ class MovimientoEfectivo(BaseModel):
     descripcion: str = ""
 
 
-@app.post("/caja/entradas", tags=["caja"], status_code=201)
+@app.post("/caja/entradas", tags=["caja"], status_code=201, dependencies=[exige("entrada_efectivo")])
 def crear_entrada_efectivo(movimiento: MovimientoEfectivo):
     """Mete efectivo en la caja."""
     return _resultado(registrar_entrada_efectivo(**movimiento.model_dump()))
 
 
-@app.post("/caja/salidas", tags=["caja"], status_code=201)
+@app.post("/caja/salidas", tags=["caja"], status_code=201, dependencies=[exige("salida_efectivo")])
 def crear_salida_efectivo(movimiento: MovimientoEfectivo):
     """Saca efectivo de la caja. Falla si no hay suficiente."""
     return _resultado(registrar_salida_efectivo(**movimiento.model_dump()))
@@ -521,7 +556,7 @@ class FondoEntrante(BaseModel):
     fondo: float = Field(..., ge=0)
 
 
-@app.put("/caja/fondo/{fecha}", tags=["caja"])
+@app.put("/caja/fondo/{fecha}", tags=["caja"], dependencies=[exige("fondo_caja")])
 def fijar_fondo(fecha: str, cuerpo: FondoEntrante):
     """Fija el fondo de caja de un día. Sustituye, no suma."""
     _validar_fecha(fecha)
@@ -538,7 +573,7 @@ class CambioEntrante(BaseModel):
     observaciones: str = ""
 
 
-@app.post("/cambio", tags=["caja"], status_code=201)
+@app.post("/cambio", tags=["caja"], status_code=201, dependencies=[exige("cambio_divisa")])
 def crear_operacion_cambio(operacion: CambioEntrante):
     """Registra una compra o venta de divisa."""
     return _resultado(registrar_operacion_cambio(**operacion.model_dump()))
@@ -546,7 +581,7 @@ def crear_operacion_cambio(operacion: CambioEntrante):
 
 # -------------------------------------------------------------- historial
 
-@app.delete("/historial/{registro_id}", tags=["historial"])
+@app.delete("/historial/{registro_id}", tags=["historial"], dependencies=[exige("eliminar_historial")])
 def revertir_del_historial(
     registro_id: int,
     tipo: str = Query(..., description="Tipo del registro, tal como lo devuelve /ventas"),
@@ -557,3 +592,131 @@ def revertir_del_historial(
     que hubiera generado.
     """
     return _resultado(revertir_registro(registro_id, tipo))
+
+
+# =========================================================================
+#  SESIÓN, USUARIOS Y PERMISOS
+# =========================================================================
+
+class Credenciales(BaseModel):
+    nombre: str
+    pin: str
+
+
+class UsuarioEntrante(BaseModel):
+    nombre: str
+    rol: str
+    pin: str
+
+
+class RolEntrante(BaseModel):
+    rol: str
+
+
+class PinEntrante(BaseModel):
+    pin: str
+
+
+class PermisoEntrante(BaseModel):
+    rol: str
+    permiso: str
+    concedido: bool
+
+
+def _quien_soy():
+    """Lo que la interfaz necesita para saber qué enseñar y qué esconder."""
+    return {
+        "sesion": sesion.sesion_actual(),
+        "permisos": sorted(sesion.permisos_actuales()),
+        "hay_usuarios": usuarios.hay_usuarios(),
+        "roles": list(usuarios.ROLES),
+        "catalogo_permisos": [{"clave": c, "texto": t} for c, t in usuarios.PERMISOS],
+        "permiso_fijo": usuarios.PERMISO_FIJO,
+    }
+
+
+@app.get("/sesion", tags=["sesion"])
+def quien_soy():
+    """Quién está dentro y qué puede hacer. Sin nadie dentro, sesion va nula."""
+    return _quien_soy()
+
+
+@app.post("/sesion", tags=["sesion"])
+def abrir_sesion(credenciales: Credenciales):
+    """Entrar. El error no distingue usuario de PIN, y eso es a propósito:
+    decir cuál de los dos ha fallado es regalar media contraseña."""
+    exito, mensaje = sesion.entrar(credenciales.nombre, credenciales.pin)
+    if not exito:
+        raise HTTPException(status_code=401, detail=mensaje)
+    return {"ok": True, "mensaje": mensaje, **_quien_soy()}
+
+
+@app.delete("/sesion", tags=["sesion"])
+def cerrar_sesion():
+    """Salir, para que entre otra persona sin cerrar el programa."""
+    sesion.salir()
+    return {"ok": True, **_quien_soy()}
+
+
+@app.post("/sesion/primer-admin", tags=["sesion"], status_code=201)
+def crear_primer_admin(nuevo: Credenciales):
+    """Crea el Admin de una tienda estrenada, y sólo entonces.
+
+    No se reparte un PIN de fábrica con el programa: cada negocio pone el
+    suyo la primera vez que abre. Si ya hay usuarios, esta ruta se cierra.
+    """
+    if usuarios.hay_usuarios():
+        raise HTTPException(status_code=409,
+                            detail="Ya hay usuarios: entra con el tuyo")
+    exito, mensaje = usuarios.crear_usuario(nuevo.nombre, usuarios.ADMIN, nuevo.pin)
+    if not exito:
+        raise HTTPException(status_code=422, detail=mensaje)
+    sesion.entrar(nuevo.nombre, nuevo.pin)
+    return {"ok": True, "mensaje": mensaje, **_quien_soy()}
+
+
+@app.get("/usuarios", tags=["usuarios"], dependencies=[exige("gestionar_usuarios")])
+def listar_los_usuarios(incluir_inactivos: bool = Query(False)):
+    return usuarios.listar_usuarios(incluir_inactivos=incluir_inactivos)
+
+
+@app.post("/usuarios", tags=["usuarios"], status_code=201,
+          dependencies=[exige("gestionar_usuarios")])
+def crear_el_usuario(nuevo: UsuarioEntrante):
+    return _resultado(usuarios.crear_usuario(nuevo.nombre, nuevo.rol, nuevo.pin))
+
+
+@app.put("/usuarios/{usuario_id}/rol", tags=["usuarios"],
+         dependencies=[exige("gestionar_usuarios")])
+def cambiar_el_rol(usuario_id: int, cambio: RolEntrante):
+    return _resultado(usuarios.cambiar_rol(usuario_id, cambio.rol))
+
+
+@app.put("/usuarios/{usuario_id}/pin", tags=["usuarios"],
+         dependencies=[exige("gestionar_usuarios")])
+def restablecer_el_pin(usuario_id: int, nuevo: PinEntrante):
+    """El Admin le pone PIN nuevo a cualquiera, sin necesitar el viejo."""
+    return _resultado(usuarios.restablecer_pin(usuario_id, nuevo.pin))
+
+
+@app.delete("/usuarios/{usuario_id}", tags=["usuarios"],
+            dependencies=[exige("gestionar_usuarios")])
+def desactivar_el_usuario(usuario_id: int):
+    """Lo apaga, no lo borra: lo que hizo tiene que seguir teniendo nombre."""
+    return _resultado(usuarios.desactivar_usuario(usuario_id))
+
+
+@app.get("/permisos", tags=["usuarios"], dependencies=[exige("gestionar_usuarios")])
+def ver_permisos():
+    return {
+        "roles": list(usuarios.ROLES),
+        "catalogo": [{"clave": c, "texto": t} for c, t in usuarios.PERMISOS],
+        "concedidos": usuarios.mapa_de_permisos(),
+        "permiso_fijo": usuarios.PERMISO_FIJO,
+    }
+
+
+@app.put("/permisos", tags=["usuarios"], dependencies=[exige("gestionar_usuarios")])
+def cambiar_permiso(cambio: PermisoEntrante):
+    return _resultado(
+        usuarios.fijar_permiso(cambio.rol, cambio.permiso, cambio.concedido))

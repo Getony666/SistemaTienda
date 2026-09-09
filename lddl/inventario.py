@@ -2,6 +2,7 @@
 
 import datetime
 
+from . import sesion
 from .historial import registrar_historial
 from .rutas import consulta as abrir_consulta, transaccion
 
@@ -20,9 +21,9 @@ def registrar_salida(producto_id, cantidad, precio_costo, motivo="Salida a traba
             fecha_venta = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cursor.execute('''
                 INSERT INTO ventas 
-                (fecha, total, metodo_pago, moneda_pago, tasa_cambio, es_mensajeria, es_deuda, pagada, fecha_pago, cancelada, saldo_pendiente, metodo_pago_real, observaciones, pago_texto, vuelto_texto)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (fecha_venta, total_cup, "Salida", "CUP", 1.0, 0, 1, 0, None, 0, total_cup, '', motivo, "Deuda generada", "0.00 CUP"))
+                (fecha, total, metodo_pago, moneda_pago, tasa_cambio, es_mensajeria, es_deuda, pagada, fecha_pago, cancelada, saldo_pendiente, metodo_pago_real, observaciones, pago_texto, vuelto_texto, usuario)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (fecha_venta, total_cup, "Salida", "CUP", 1.0, 0, 1, 0, None, 0, total_cup, '', motivo, "Deuda generada", "0.00 CUP", sesion.usuario_actual()))
             venta_id = cursor.lastrowid
             cursor.execute('''
                 INSERT INTO detalles_venta (venta_id, producto_id, cantidad, precio_unitario)
@@ -30,9 +31,9 @@ def registrar_salida(producto_id, cantidad, precio_costo, motivo="Salida a traba
             ''', (venta_id, producto_id, cantidad, precio_costo))
             cursor.execute('UPDATE productos SET stock = stock - ? WHERE id = ?', (cantidad, producto_id))
             cursor.execute('''
-                INSERT INTO salidas_inventario (fecha, producto_id, cantidad, precio_costo, motivo)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (fecha_venta, producto_id, cantidad, precio_costo, motivo))
+                INSERT INTO salidas_inventario (fecha, producto_id, cantidad, precio_costo, motivo, usuario)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (fecha_venta, producto_id, cantidad, precio_costo, motivo, sesion.usuario_actual()))
             ref_id = cursor.lastrowid
     except Exception as e:
         return False, f"Error al registrar salida: {str(e)}"
@@ -58,9 +59,9 @@ def registrar_merma(producto_id, cantidad, motivo="Merma"):
             fecha = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cursor.execute('UPDATE productos SET stock = stock - ? WHERE id = ?', (cantidad, producto_id))
             cursor.execute('''
-                INSERT INTO salidas_inventario (fecha, producto_id, cantidad, precio_costo, motivo)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (fecha, producto_id, cantidad, precio_compra, motivo))
+                INSERT INTO salidas_inventario (fecha, producto_id, cantidad, precio_costo, motivo, usuario)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (fecha, producto_id, cantidad, precio_compra, motivo, sesion.usuario_actual()))
             ref_id = cursor.lastrowid
     except Exception as e:
         return False, f"Error al registrar merma: {str(e)}"
@@ -164,10 +165,11 @@ def registrar_salida_de_carrito(lineas, motivo="Salida a trabajador"):
                 INSERT INTO ventas
                 (fecha, total, metodo_pago, moneda_pago, tasa_cambio, es_mensajeria,
                  es_deuda, pagada, fecha_pago, cancelada, saldo_pendiente,
-                 metodo_pago_real, observaciones, pago_texto, vuelto_texto)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 metodo_pago_real, observaciones, pago_texto, vuelto_texto, usuario)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (fecha, total_cup, "Salida", "CUP", 1.0, 0, 1, 0, None, 0,
-                  total_cup, '', motivo, "Deuda generada", "0.00 CUP"))
+                  total_cup, '', motivo, "Deuda generada", "0.00 CUP",
+                  sesion.usuario_actual()))
             venta_id = cursor.lastrowid
 
             for linea in preparadas:
@@ -178,10 +180,10 @@ def registrar_salida_de_carrito(lineas, motivo="Salida a trabajador"):
                 cursor.execute('UPDATE productos SET stock = stock - ? WHERE id = ?',
                                (linea["cantidad"], linea["producto_id"]))
                 cursor.execute(
-                    'INSERT INTO salidas_inventario (fecha, producto_id, cantidad, precio_costo, motivo)'
-                    ' VALUES (?, ?, ?, ?, ?)',
+                    'INSERT INTO salidas_inventario (fecha, producto_id, cantidad, precio_costo, motivo, usuario)'
+                    ' VALUES (?, ?, ?, ?, ?, ?)',
                     (fecha, linea["producto_id"], linea["cantidad"],
-                     linea["precio_costo"], motivo))
+                     linea["precio_costo"], motivo, sesion.usuario_actual()))
                 linea["ref_id"] = cursor.lastrowid
     except Exception as e:
         return False, f"Error al registrar la salida: {str(e)}"
@@ -220,10 +222,10 @@ def registrar_merma_de_carrito(lineas, motivo="Merma"):
                 cursor.execute('UPDATE productos SET stock = stock - ? WHERE id = ?',
                                (linea["cantidad"], linea["producto_id"]))
                 cursor.execute(
-                    'INSERT INTO salidas_inventario (fecha, producto_id, cantidad, precio_costo, motivo)'
-                    ' VALUES (?, ?, ?, ?, ?)',
+                    'INSERT INTO salidas_inventario (fecha, producto_id, cantidad, precio_costo, motivo, usuario)'
+                    ' VALUES (?, ?, ?, ?, ?, ?)',
                     (fecha, linea["producto_id"], linea["cantidad"],
-                     linea["precio_costo"], motivo))
+                     linea["precio_costo"], motivo, sesion.usuario_actual()))
                 linea["ref_id"] = cursor.lastrowid
     except Exception as e:
         return False, f"Error al registrar la merma: {str(e)}"

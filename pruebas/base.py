@@ -25,13 +25,24 @@ CONFIG = os.path.join(AQUI, "config_de_pruebas.json")
 def carpeta_con_copia(prefijo="mitienda-pruebas-"):
     """Carpeta temporal con una copia de la base y de la configuración.
 
+    La copia se migra antes de devolverla, igual que hace el programa al
+    abrirse: así el fichero de pruebas guarda DATOS y no tiene que ir
+    persiguiendo cada columna nueva. Al migrarla hay que apuntar ahí primero,
+    de modo que esta función deja ya fijado el directorio base.
+
     Devuelve la ruta. Quien la pida se encarga de borrarla, normalmente en
     un tearDown con `shutil.rmtree(ruta, ignore_errors=True)`.
     """
+    from lddl import rutas
+    from lddl.esquema import preparar_base
+
     temporal = tempfile.mkdtemp(prefix=prefijo)
     shutil.copy2(BASE, os.path.join(temporal, "tienda.db"))
     if os.path.exists(CONFIG):
         shutil.copy2(CONFIG, os.path.join(temporal, "config_caja.json"))
+
+    rutas.fijar_directorio_base(temporal)
+    preparar_base()
     return temporal
 
 

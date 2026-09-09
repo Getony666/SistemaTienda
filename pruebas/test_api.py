@@ -159,6 +159,16 @@ RUTAS_QUE_ESCRIBEN = {
     ("PUT", "/caja/fondo/{fecha}"),
     ("POST", "/cambio"),
     ("DELETE", "/historial/{registro_id}"),
+    # Usuarios y permisos. /sesion no escribe en la base -la sesión vive en
+    # memoria- pero son POST y DELETE, así que se apuntan igual.
+    ("POST", "/sesion"),
+    ("DELETE", "/sesion"),
+    ("POST", "/sesion/primer-admin"),
+    ("POST", "/usuarios"),
+    ("PUT", "/usuarios/{usuario_id}/rol"),
+    ("PUT", "/usuarios/{usuario_id}/pin"),
+    ("DELETE", "/usuarios/{usuario_id}"),
+    ("PUT", "/permisos"),
 }
 
 
@@ -207,17 +217,26 @@ class LaApiEscribeDeVerdad(unittest.TestCase):
     def setUpClass(cls):
         import base
 
-        from lddl import rutas
+        from lddl import rutas, sesion, usuarios
 
         cls.rutas = rutas
+        cls.sesion = sesion
         cls.temporal = base.carpeta_con_copia()
         rutas.fijar_directorio_base(cls.temporal)
+
+        # Desde que hay permisos, escribir exige tener sesión: sin ella la API
+        # contesta 401, que es justo lo que tiene que hacer. Estas pruebas van
+        # de que las escrituras funcionen, así que entran como Admin.
+        usuarios.crear_usuario("PruebaAdmin", usuarios.ADMIN, "1234")
+        sesion.entrar("PruebaAdmin", "1234")
+
         cls.cliente = TestClient(app)
 
     @classmethod
     def tearDownClass(cls):
         import shutil
 
+        cls.sesion.salir()
         # Se vuelve a la copia del módulo, no a None: las clases que corran
         # después siguen necesitando datos que leer.
         cls.rutas.fijar_directorio_base(_CARPETA)

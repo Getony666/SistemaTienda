@@ -6,6 +6,7 @@ saca del fondo la divisa que entró y borra los movimientos de caja asociados.""
 import datetime
 import json
 
+from . import sesion
 from .rutas import conectar_db, transaccion
 
 
@@ -14,9 +15,11 @@ def registrar_historial(tipo_accion, descripcion, detalles=None):
         with transaccion() as (_conn, cursor):
             fecha = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cursor.execute('''
-                INSERT INTO historial (fecha, tipo_accion, descripcion, detalles)
-                VALUES (?, ?, ?, ?)
-            ''', (fecha, tipo_accion, descripcion, json.dumps(detalles) if detalles else None))
+                INSERT INTO historial (fecha, tipo_accion, descripcion, detalles, usuario)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (fecha, tipo_accion, descripcion,
+                  json.dumps(detalles) if detalles else None,
+                  sesion.usuario_actual()))
         return True
     except Exception as e:
         print(f"Error al registrar historial: {e}")

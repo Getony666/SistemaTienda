@@ -8,6 +8,7 @@ import datetime
 import json
 import os
 
+from . import sesion
 from .historial import registrar_historial
 from .rutas import conectar_db, consulta, obtener_ruta_config
 
@@ -366,9 +367,9 @@ def registrar_entrada_efectivo(moneda, monto, descripcion=""):
         cursor.execute("BEGIN IMMEDIATE")
         fecha = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute('''
-            INSERT INTO entradas_efectivo (fecha, moneda, monto, descripcion)
-            VALUES (?, ?, ?, ?)
-        ''', (fecha, moneda, monto, descripcion))
+            INSERT INTO entradas_efectivo (fecha, moneda, monto, descripcion, usuario)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (fecha, moneda, monto, descripcion, sesion.usuario_actual()))
         ref_id = cursor.lastrowid
         if moneda in ("USD", "EUR"):
             exito, msg, nuevo_saldo = actualizar_fondo(moneda, monto, "entrada", conn, cursor)
@@ -410,9 +411,9 @@ def registrar_salida_efectivo(moneda, monto, descripcion=""):
                 return False, msg
 
         cursor.execute('''
-            INSERT INTO salidas_efectivo (fecha, moneda, monto, descripcion)
-            VALUES (?, ?, ?, ?)
-        ''', (fecha, moneda, monto, descripcion))
+            INSERT INTO salidas_efectivo (fecha, moneda, monto, descripcion, usuario)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (fecha, moneda, monto, descripcion, sesion.usuario_actual()))
         ref_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -493,9 +494,10 @@ def registrar_operacion_cambio(tipo, moneda, cantidad, tasa, observaciones=""):
         fecha = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         cursor.execute('''
-            INSERT INTO operaciones_cambio (fecha, tipo, moneda, cantidad, tasa, monto_cup, observaciones)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (fecha, tipo, moneda, cantidad, tasa, monto_cup, observaciones))
+            INSERT INTO operaciones_cambio (fecha, tipo, moneda, cantidad, tasa, monto_cup, observaciones, usuario)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (fecha, tipo, moneda, cantidad, tasa, monto_cup, observaciones,
+              sesion.usuario_actual()))
         ref_id = cursor.lastrowid
 
         exito, msg, nuevo_saldo = actualizar_fondo(moneda, cantidad, tipo, conn, cursor)
@@ -506,9 +508,11 @@ def registrar_operacion_cambio(tipo, moneda, cantidad, tasa, observaciones=""):
 
         if tipo == "venta":
             cursor.execute('''
-                INSERT INTO entradas_efectivo (fecha, moneda, monto, descripcion)
-                VALUES (?, ?, ?, ?)
-            ''', (fecha, "CUP", monto_cup, f"Venta de {cantidad} {moneda} (tasa {tasa})"))
+                INSERT INTO entradas_efectivo (fecha, moneda, monto, descripcion, usuario)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (fecha, "CUP", monto_cup,
+                  f"Venta de {cantidad} {moneda} (tasa {tasa})",
+                  sesion.usuario_actual()))
 
         conn.commit()
         conn.close()

@@ -31,7 +31,7 @@ const MODOS = {
   },
 };
 
-export default function PanelVentas({ productos, recargarProductos }) {
+export default function PanelVentas({ productos, recargarProductos, puede }) {
   const [busqueda, setBusqueda] = useState("");
   const [marcado, setMarcado] = useState(0);
   const [carrito, setCarrito] = useState([]);
@@ -381,14 +381,18 @@ export default function PanelVentas({ productos, recargarProductos }) {
                     onClick={() => marcarPago(() => setDeuda((v) => !v))}>
               Deuda
             </button>
-            <button className="pastilla naranja" aria-pressed={modo === "salida"}
-                    onClick={() => cambiarModo("salida")}>
-              Salida
-            </button>
-            <button className="pastilla morada" aria-pressed={modo === "merma"}
-                    onClick={() => cambiarModo("merma")}>
-              Merma
-            </button>
+            {puede("salida_inventario") && (
+              <button className="pastilla naranja" aria-pressed={modo === "salida"}
+                      onClick={() => cambiarModo("salida")}>
+                Salida
+              </button>
+            )}
+            {puede("merma") && (
+              <button className="pastilla morada" aria-pressed={modo === "merma"}
+                      onClick={() => cambiarModo("merma")}>
+                Merma
+              </button>
+            )}
           </div>
 
           {!esVenta && (
@@ -535,7 +539,8 @@ export default function PanelVentas({ productos, recargarProductos }) {
       </div>
 
       <div className="columna">
-        <PanelAcciones productos={productos} alCambiar={recargarProductos} />
+        <PanelAcciones productos={productos} alCambiar={recargarProductos}
+                       puede={puede} />
       </div>
     </div>
   );

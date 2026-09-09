@@ -6,6 +6,18 @@ necesita, y añade las que falten sin tocar los datos ya guardados."""
 from .rutas import conectar_db
 
 
+def preparar_base():
+    """Deja la base lista para trabajar: tablas al día y permisos sembrados.
+
+    Lo llaman la ventana de tkinter y el arranque de la API. Antes sólo lo
+    hacía tkinter, así que la aplicación de React se abría sin comprobar el
+    esquema: las tablas nuevas no llegaban a crearse.
+    """
+    verificar_y_crear_columnas()
+    from .usuarios import sembrar_permisos_si_hace_falta
+    sembrar_permisos_si_hace_falta()
+
+
 def verificar_y_crear_columnas():
     try:
         conn = conectar_db()
@@ -165,6 +177,45 @@ def verificar_y_crear_columnas():
             columnas_mov = [col[1] for col in cursor.fetchall()]
             if columnas_mov and "venta_id" not in columnas_mov:
                 cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN venta_id INTEGER")
+                conn.commit()
+
+        # ------------------------------------------------------ usuarios
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usuarios'")
+        if not cursor.fetchone():
+            cursor.execute('''
+                CREATE TABLE usuarios (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre TEXT NOT NULL UNIQUE,
+                    rol TEXT NOT NULL,
+                    pin TEXT NOT NULL,
+                    activo INTEGER DEFAULT 1,
+                    creado TEXT
+                )
+            ''')
+            conn.commit()
+
+        # Los permisos son datos: el Admin los cambia desde el programa. La
+        # clave doble deja usar ON CONFLICT al concederlos o quitarlos.
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='permisos_rol'")
+        if not cursor.fetchone():
+            cursor.execute('''
+                CREATE TABLE permisos_rol (
+                    rol TEXT NOT NULL,
+                    permiso TEXT NOT NULL,
+                    concedido INTEGER DEFAULT 0,
+                    PRIMARY KEY (rol, permiso)
+                )
+            ''')
+            conn.commit()
+
+        # Quién hizo cada cosa. Va en las seis tablas que el historial enseña,
+        # para que ninguna linea salga sin nombre.
+        for tabla in ("ventas", "historial", "entradas_efectivo", "salidas_efectivo",
+                      "operaciones_cambio", "salidas_inventario"):
+            cursor.execute(f"PRAGMA table_info({tabla})")
+            columnas_tabla = [col[1] for col in cursor.fetchall()]
+            if columnas_tabla and "usuario" not in columnas_tabla:
+                cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN usuario TEXT DEFAULT ''")
                 conn.commit()
 
         conn.close()

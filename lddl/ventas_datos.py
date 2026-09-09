@@ -3,6 +3,7 @@
 import datetime
 import json
 
+from . import sesion
 from .caja import actualizar_fondo
 from .rutas import conectar_db, consulta
 
@@ -111,7 +112,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
         if filtro_tipo in ("todos", "ventas", "deudas", "mensajeria"):
             sentencia = '''
                 SELECT v.id, v.fecha, v.total, v.metodo_pago, v.cancelada, v.es_deuda, v.pagada, v.saldo_pendiente,
-                       v.metodo_pago_real, v.observaciones, v.moneda_pago, v.tasa_cambio, v.pago_texto, v.vuelto_texto, v.es_mensajeria
+                       v.metodo_pago_real, v.observaciones, v.moneda_pago, v.tasa_cambio, v.pago_texto, v.vuelto_texto, v.es_mensajeria, v.usuario
                 FROM ventas v
                 WHERE v.metodo_pago != 'Salida'
             '''
@@ -144,7 +145,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             for row in filas_ventas:
                 (id_reg, fecha, total, metodo_pago, cancelada, es_deuda, pagada,
                  saldo_pendiente, metodo_pago_real, observaciones, moneda_pago,
-                 tasa_cambio, pago_texto, vuelto_texto, es_mensajeria) = row
+                 tasa_cambio, pago_texto, vuelto_texto, es_mensajeria, usuario) = row
                 if cancelada:
                     continue
                 if es_deuda and pagada == 0:
@@ -184,6 +185,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     # Sube al primer nivel para que la tabla del historial pueda
                     # pintar su columna sin abrir el detalle de cada fila.
                     "es_mensajeria": 1 if es_mensajeria else 0,
+                    "usuario": usuario or "",
                     "detalle_extra": detalle_extra
                 })
 
@@ -191,7 +193,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
         # si se está filtrando por uno, no pintan nada en la lista.
         if filtro_tipo in ("todos", "cambio") and producto_id is None:
             sentencia = '''
-                SELECT id, fecha, tipo, moneda, cantidad, tasa, monto_cup, observaciones
+                SELECT id, fecha, tipo, moneda, cantidad, tasa, monto_cup, observaciones, usuario
                 FROM operaciones_cambio
                 WHERE 1=1
             '''
@@ -202,7 +204,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             sentencia += " ORDER BY fecha DESC"
             cursor.execute(sentencia, params)
             for row in cursor.fetchall():
-                id_reg, fecha, tipo_op, moneda, cantidad, tasa, monto_cup, obs = row
+                id_reg, fecha, tipo_op, moneda, cantidad, tasa, monto_cup, obs, usuario = row
                 resultados.append({
                     # Igual que en los movimientos de efectivo, este texto es el
                     # que reconocen el panel de detalle y el borrado.
@@ -214,12 +216,13 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "metodo_pago": "Efectivo",
                     "producto": "",
                     "observaciones": f"Monto CUP: {monto_cup:.2f}",
+                    "usuario": usuario or "",
                     "detalle_extra": {"tipo_op": tipo_op, "tasa": tasa, "moneda_original": moneda, "cantidad": cantidad, "monto_cup": monto_cup, "obs": obs}
                 })
 
         if filtro_tipo in ("todos", "entrada_efectivo") and producto_id is None:
             sentencia = '''
-                SELECT id, fecha, moneda, monto, descripcion
+                SELECT id, fecha, moneda, monto, descripcion, usuario
                 FROM entradas_efectivo
                 WHERE 1=1
             '''
@@ -230,7 +233,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             sentencia += " ORDER BY fecha DESC"
             cursor.execute(sentencia, params)
             for row in cursor.fetchall():
-                id_reg, fecha, moneda, monto, desc = row
+                id_reg, fecha, moneda, monto, desc, usuario = row
                 resultados.append({
                     # Este texto es el que leen el panel de detalle y el borrado
                     # del historial, que lo esperan escrito así.
@@ -242,12 +245,13 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "metodo_pago": "Efectivo",
                     "producto": "",
                     "observaciones": desc or "",
+                    "usuario": usuario or "",
                     "detalle_extra": {}
                 })
 
         if filtro_tipo in ("todos", "salida_efectivo") and producto_id is None:
             sentencia = '''
-                SELECT id, fecha, moneda, monto, descripcion
+                SELECT id, fecha, moneda, monto, descripcion, usuario
                 FROM salidas_efectivo
                 WHERE 1=1
             '''
@@ -258,7 +262,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             sentencia += " ORDER BY fecha DESC"
             cursor.execute(sentencia, params)
             for row in cursor.fetchall():
-                id_reg, fecha, moneda, monto, desc = row
+                id_reg, fecha, moneda, monto, desc, usuario = row
                 resultados.append({
                     "tipo": "Salida de efectivo",
                     "id": id_reg,
@@ -268,6 +272,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "metodo_pago": "Efectivo",
                     "producto": "",
                     "observaciones": desc or "",
+                    "usuario": usuario or "",
                     "detalle_extra": {}
                 })
 
@@ -276,7 +281,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
         # y se incluyen en "todos" y "merma"
         if filtro_tipo in ("todos", "merma"):
             consulta_salidas = '''
-                SELECT s.id, s.fecha, p.nombre, s.cantidad, s.precio_costo, s.motivo
+                SELECT s.id, s.fecha, p.nombre, s.cantidad, s.precio_costo, s.motivo, s.usuario
                 FROM salidas_inventario s
                 JOIN productos p ON s.producto_id = p.id
                 WHERE s.motivo LIKE '%Merma%'
@@ -291,7 +296,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             consulta_salidas += " ORDER BY s.fecha DESC"
             cursor.execute(consulta_salidas, params_salidas)
             for row in cursor.fetchall():
-                id_sal, fecha, nombre, cantidad, precio_costo, motivo = row
+                id_sal, fecha, nombre, cantidad, precio_costo, motivo, usuario = row
                 resultados.append({
                     "tipo": "Merma",
                     "id": id_sal,  # ID numérico directamente de la tabla
@@ -301,6 +306,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "metodo_pago": "",
                     "producto": nombre,
                     "observaciones": f"Cantidad: {cantidad} - {motivo}",
+                    "usuario": usuario or "",
                     "detalle_extra": {"origen": "salidas_inventario", "producto": nombre, "cantidad": cantidad}
                 })
 
@@ -312,7 +318,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
         # él este bloque no se ejecutaba y ese filtro salía siempre vacío.
         if filtro_tipo in ("todos", "salidas", "entrada_producto") + tuple(tipos_historial):
             consulta_hist = '''
-                SELECT id, fecha, tipo_accion, descripcion, detalles
+                SELECT id, fecha, tipo_accion, descripcion, detalles, usuario
                 FROM historial
                 WHERE 1=1
             '''
@@ -338,7 +344,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             consulta_hist += " ORDER BY fecha DESC"
             cursor.execute(consulta_hist, params_hist)
             for row in cursor.fetchall():
-                id_reg, fecha, tipo_accion, desc, detalles_json = row
+                id_reg, fecha, tipo_accion, desc, detalles_json, usuario = row
                 if producto_id is not None and not _fila_historial_es_del_producto(tipo_accion, detalles_json, producto_id, producto_nombre):
                     continue
                 monto = 0.0
@@ -392,6 +398,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "metodo_pago": metodo_pago,
                     "producto": _producto_de_historial(cursor, detalles_json),
                     "observaciones": observaciones,
+                    "usuario": usuario or "",
                     "detalle_extra": detalle_extra
                 })
 
@@ -441,8 +448,8 @@ def registrar_venta_en_db(carrito, datos):
 
         cursor.execute('''
             INSERT INTO ventas
-            (fecha, total, metodo_pago, moneda_pago, tasa_cambio, es_mensajeria, es_deuda, pagada, fecha_pago, cancelada, saldo_pendiente, metodo_pago_real, observaciones, pago_texto, vuelto_texto, monto_efectivo, monto_transferencia, utilidad, monto_divisa_neto)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (fecha, total, metodo_pago, moneda_pago, tasa_cambio, es_mensajeria, es_deuda, pagada, fecha_pago, cancelada, saldo_pendiente, metodo_pago_real, observaciones, pago_texto, vuelto_texto, monto_efectivo, monto_transferencia, utilidad, monto_divisa_neto, usuario)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             fecha,
             datos["total_cup"],
@@ -462,7 +469,8 @@ def registrar_venta_en_db(carrito, datos):
             datos["monto_efectivo_cup"],
             datos["monto_transferencia_cup"],
             datos["utilidad_total"],
-            divisa_neta
+            divisa_neta,
+            sesion.usuario_actual()
         ))
         venta_id = cursor.lastrowid
 
@@ -485,9 +493,9 @@ def registrar_venta_en_db(carrito, datos):
         salida_efectivo_extra = datos.get("salida_efectivo_extra", 0.0)
         if salida_efectivo_extra > 0:
             cursor.execute('''
-                INSERT INTO salidas_efectivo (fecha, moneda, monto, descripcion, venta_id)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (fecha, "CUP", salida_efectivo_extra, f"Vuelto en CUP de venta #{venta_id} (no cubierto por pago en CUP)", venta_id))
+                INSERT INTO salidas_efectivo (fecha, moneda, monto, descripcion, venta_id, usuario)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (fecha, "CUP", salida_efectivo_extra, f"Vuelto en CUP de venta #{venta_id} (no cubierto por pago en CUP)", venta_id, sesion.usuario_actual()))
 
         conexion.commit()
         conexion.close()
@@ -569,18 +577,18 @@ def registrar_cobro_deuda_en_db(venta_id, datos):
             vuelto_cup_restante = vuelto_cup - (vuelto_moneda * tasa) if vuelto_moneda > 0 else vuelto_cup
             if vuelto_cup_restante > 0:
                 cursor.execute('''
-                    INSERT INTO salidas_efectivo (fecha, moneda, monto, descripcion, venta_id)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (fecha_actual, "CUP", vuelto_cup_restante, f"Vuelto en CUP de deuda #{venta_id}", venta_id))
+                    INSERT INTO salidas_efectivo (fecha, moneda, monto, descripcion, venta_id, usuario)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (fecha_actual, "CUP", vuelto_cup_restante, f"Vuelto en CUP de deuda #{venta_id}", venta_id, sesion.usuario_actual()))
 
         # El cobro en CUP ya se contabiliza vía cobros_deudas; esta entrada queda como
         # rastro del movimiento de caja y por eso obtener_resumen_caja la excluye por
         # descripción para no contarla dos veces.
         if efectivo_cup > 0:
             cursor.execute('''
-                INSERT INTO entradas_efectivo (fecha, moneda, monto, descripcion, venta_id)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (fecha_actual, "CUP", efectivo_cup, f"Pago de deuda #{venta_id} - Efectivo CUP", venta_id))
+                INSERT INTO entradas_efectivo (fecha, moneda, monto, descripcion, venta_id, usuario)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (fecha_actual, "CUP", efectivo_cup, f"Pago de deuda #{venta_id} - Efectivo CUP", venta_id, sesion.usuario_actual()))
 
         conn.commit()
         conn.close()

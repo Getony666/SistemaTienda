@@ -4,11 +4,11 @@ import { enviar } from "./api";
 // Salida de Inventario y Merma ya no están aquí: se marcan como etiquetas en
 // la sección de Pago, sobre el carrito entero. Quedan cinco, en dos filas.
 const ACCIONES = [
-  { id: "nuevo", texto: "Nuevo Producto", color: "teal" },
-  { id: "actualizar", texto: "Actualizar Producto", color: "ocre" },
-  { id: "eliminar", texto: "Eliminar Producto", color: "rojo" },
-  { id: "entrada", texto: "Entrada de Efectivo", color: "verde" },
-  { id: "salida_efe", texto: "Salida de Efectivo", color: "rojo" },
+  { id: "nuevo", texto: "Nuevo Producto", color: "teal", permiso: "crear_producto" },
+  { id: "actualizar", texto: "Actualizar Producto", color: "ocre", permiso: "actualizar_producto" },
+  { id: "eliminar", texto: "Eliminar Producto", color: "rojo", permiso: "eliminar_producto" },
+  { id: "entrada", texto: "Entrada de Efectivo", color: "verde", permiso: "entrada_efectivo" },
+  { id: "salida_efe", texto: "Salida de Efectivo", color: "rojo", permiso: "salida_efectivo" },
 ];
 
 const vacio = {
@@ -19,7 +19,8 @@ const vacio = {
   producto_id: "",
 };
 
-export default function PanelAcciones({ productos, alCambiar }) {
+export default function PanelAcciones({ productos, alCambiar, puede }) {
+  const permitidas = ACCIONES.filter((a) => puede(a.permiso));
   const [abierta, setAbierta] = useState(null);
   const [campos, setCampos] = useState(vacio);
   const [aviso, setAviso] = useState(null);
@@ -174,17 +175,23 @@ export default function PanelAcciones({ productos, alCambiar }) {
     <section className="tarjeta">
       <h2>⚡ Acciones</h2>
 
-      <div className="acciones">
-        {ACCIONES.map((a) => (
-          <button
-            key={a.id}
-            className={`boton ${a.color} ${abierta === a.id ? "activo" : ""}`}
-            onClick={() => abrir(a.id)}
-          >
-            {a.texto}
-          </button>
-        ))}
-      </div>
+      {permitidas.length === 0 ? (
+        <div className="pendiente">
+          Tu usuario no tiene ninguna<br />de estas acciones habilitada.
+        </div>
+      ) : (
+        <div className="acciones">
+          {permitidas.map((a) => (
+            <button
+              key={a.id}
+              className={`boton ${a.color} ${abierta === a.id ? "activo" : ""}`}
+              onClick={() => abrir(a.id)}
+            >
+              {a.texto}
+            </button>
+          ))}
+        </div>
+      )}
 
       {abierta ? (
         <div className="formulario">
