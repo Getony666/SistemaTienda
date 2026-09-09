@@ -12,12 +12,29 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import base  # noqa: E402
+
 try:
     from fastapi.testclient import TestClient
     from lddl.api import app
     HAY_API = True
 except Exception:  # sin fastapi instalado
     HAY_API = False
+
+
+# Hasta las pruebas de sólo lectura necesitan datos que leer, y `tienda.db`
+# se entrega vacía a cada negocio. Todo el fichero mira a una copia de la
+# base de pruebas.
+_CARPETA = None
+
+
+def setUpModule():
+    global _CARPETA
+    _CARPETA = base.empezar_modulo()
+
+
+def tearDownModule():
+    base.terminar_modulo(_CARPETA)
 
 
 @unittest.skipUnless(HAY_API, "hace falta fastapi (ver requisitos-api.txt)")
@@ -187,18 +204,12 @@ class LaApiEscribeDeVerdad(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import shutil
-        import tempfile
+        import base
 
         from lddl import rutas
 
         cls.rutas = rutas
-        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        cls.temporal = tempfile.mkdtemp(prefix="mitienda-pruebas-")
-        for nombre in ("tienda.db", "config_caja.json"):
-            origen = os.path.join(raiz, nombre)
-            if os.path.exists(origen):
-                shutil.copy2(origen, os.path.join(cls.temporal, nombre))
+        cls.temporal = base.carpeta_con_copia()
         rutas.fijar_directorio_base(cls.temporal)
         cls.cliente = TestClient(app)
 
@@ -206,7 +217,9 @@ class LaApiEscribeDeVerdad(unittest.TestCase):
     def tearDownClass(cls):
         import shutil
 
-        cls.rutas.fijar_directorio_base(None)
+        # Se vuelve a la copia del módulo, no a None: las clases que corran
+        # después siguen necesitando datos que leer.
+        cls.rutas.fijar_directorio_base(_CARPETA)
         shutil.rmtree(cls.temporal, ignore_errors=True)
 
     def test_la_copia_no_es_la_base_real(self):

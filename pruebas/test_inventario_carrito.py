@@ -9,11 +9,11 @@ import os
 import shutil
 import sqlite3
 import sys
-import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import base  # noqa: E402
 from lddl import rutas  # noqa: E402
 
 
@@ -21,12 +21,7 @@ class SobreUnaCopia(unittest.TestCase):
     """Cada prueba arranca con una copia limpia de la base."""
 
     def setUp(self):
-        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.temporal = tempfile.mkdtemp(prefix="mitienda-inv-")
-        for nombre in ("tienda.db", "config_caja.json"):
-            origen = os.path.join(raiz, nombre)
-            if os.path.exists(origen):
-                shutil.copy2(origen, os.path.join(self.temporal, nombre))
+        self.temporal = base.carpeta_con_copia("mitienda-inv-")
         rutas.fijar_directorio_base(self.temporal)
 
     def tearDown(self):

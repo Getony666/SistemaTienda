@@ -14,6 +14,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import base  # noqa: E402
+
 from lddl.calculo_cobro import Pago, a_numero, desglosar_para_registro  # noqa: E402
 
 TOTAL = 1000.0
@@ -154,6 +156,21 @@ try:
     HAY_PANTALLA = True
 except Exception:
     HAY_PANTALLA = False
+
+
+# Estas pruebas abren la ventana de verdad, y la ventana lee la base al
+# construirse. Se la cambiamos por una copia de la de pruebas antes de que
+# se monte nada, y se deshace al terminar el fichero.
+_CARPETA = None
+
+
+def setUpModule():
+    global _CARPETA
+    _CARPETA = base.empezar_modulo()
+
+
+def tearDownModule():
+    base.terminar_modulo(_CARPETA)
 
 
 @unittest.skipUnless(HAY_PANTALLA, "hace falta entorno gráfico")
