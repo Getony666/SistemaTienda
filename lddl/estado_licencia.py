@@ -23,8 +23,12 @@ parcheada en vez de pagar.
 
 import datetime
 
-from . import almacen_licencia, licencia, maquina
+from . import NOMBRE_APP, almacen_licencia, licencia, maquina
 from .licencia_llave import LLAVE_PUBLICA  # noqa: F401  (las pruebas lo cambian)
+
+# Para qué programa vale una licencia. Va firmado dentro, así que la licencia
+# de un producto no abre otro aunque los dos usen la misma llave.
+PRODUCTO = NOMBRE_APP
 
 DIAS_DE_CORTESIA = 7
 
@@ -85,6 +89,8 @@ def explicar(veredicto):
         licencia.NO_HAY_ARCHIVO: "Este MiTienda todavía no tiene licencia.",
         licencia.OTRA_MAQUINA: ("Esta licencia es de otra computadora. Hace "
                                 "falta una para ésta."),
+        licencia.OTRO_PRODUCTO: (f"Esta licencia es de otro programa, no de "
+                                 f"{PRODUCTO}. Pide la que corresponde."),
         licencia.FIRMA: ("El fichero de licencia está alterado y no vale. "
                          "Pide uno nuevo."),
         licencia.FORMATO: ("El fichero de licencia no se entiende. Pide uno "
@@ -101,7 +107,7 @@ def _decidir(texto, huella, hoy):
     if almacen_licencia.reloj_atrasado(hoy, almacen_licencia.marca_maxima()):
         return licencia.Veredicto(licencia.RELOJ_ATRASADO)
 
-    veredicto = licencia.verificar(texto, LLAVE_PUBLICA, huella, hoy)
+    veredicto = licencia.verificar(texto, LLAVE_PUBLICA, huella, hoy, PRODUCTO)
 
     # Sólo se estrena la cortesía cuando NO hay fichero. Una licencia vencida,
     # manipulada o de otra máquina no vuelve a abrir la puerta de los siete
@@ -197,6 +203,7 @@ def para_la_pantalla():
         "motivo": veredicto.motivo,
         "explicacion": "" if puede_escribir() else explicar(veredicto),
         "negocio": veredicto.negocio,
+        "producto": veredicto.producto,
         "edicion": veredicto.edicion,
         "hasta": veredicto.hasta.isoformat() if veredicto.hasta else "",
         "dias_restantes": veredicto.dias_restantes,

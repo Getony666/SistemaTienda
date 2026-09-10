@@ -11,7 +11,8 @@ Windows ni fabricar ficheros.
 
 Formato del fichero, en texto plano UTF-8:
 
-    MiTienda-Licencia-v1
+    MiTienda-Licencia-v2
+    producto: MiTienda
     negocio: Bodega La Esquina
     maquina: A7K2-3M4P-XR7T
     desde: 2026-09-15
@@ -29,12 +30,13 @@ import datetime
 
 from .ed25519 import verificar as verificar_firma
 
-CABECERA = "MiTienda-Licencia-v1"
+CABECERA = "MiTienda-Licencia-v2"
 
-# El orden importa: es el que se firma. Cambiarlo invalida todas las licencias
-# emitidas hasta hoy, así que si algún día hace falta otro campo, va detrás de
-# éstos y con una cabecera nueva (v2).
-CAMPOS = ("negocio", "maquina", "desde", "hasta", "edicion")
+# El orden importa: es el que se firma. Tocarlo -o añadir un campo- invalida
+# de golpe todas las licencias emitidas hasta ese momento, así que va siempre
+# con una cabecera nueva. La v2 añadió "producto", y se pudo hacer sin coste
+# porque todavía no había ni un cliente en la calle.
+CAMPOS = ("producto", "negocio", "maquina", "desde", "hasta", "edicion")
 EDICIONES = ("completa", "tecnico")
 
 # Estados
@@ -62,6 +64,7 @@ NO_HAY_ARCHIVO = "no_hay_archivo"
 FORMATO = "formato"
 FIRMA = "firma"
 OTRA_MAQUINA = "otra_maquina"
+OTRO_PRODUCTO = "otro_producto"
 
 DIAS_DE_AVISO = 30
 DIAS_DE_AVISO_SERIO = 7
@@ -72,6 +75,7 @@ class Veredicto:
     estado: str
     motivo: str = ""
     negocio: str = ""
+    producto: str = ""
     edicion: str = ""
     maquina: str = ""
     hasta: datetime.date | None = None
@@ -86,6 +90,15 @@ def normalizar_maquina(codigo):
     guion de más.
     """
     return "".join(c for c in str(codigo or "") if c.isalnum()).upper()
+
+
+def normalizar_producto(nombre):
+    """El nombre del producto sin espacios sobrantes y sin mayúsculas.
+
+    Se teclea a mano al emitir la licencia, así que una mayúscula de más no
+    puede dejar sin abrir a un cliente que ya pagó.
+    """
+    return str(nombre or "").strip().casefold()
 
 
 def texto_canonico(datos):
@@ -146,8 +159,12 @@ def analizar(texto):
     return {campo: leidos[campo] for campo in CAMPOS}, firma
 
 
-def verificar(texto, llave_publica, huella_maquina, hoy):
+def verificar(texto, llave_publica, huella_maquina, hoy, producto):
     """Qué se puede hacer hoy, en esta máquina, con esta licencia.
+
+    `producto` es el nombre del programa que está preguntando -`NOMBRE_APP`-.
+    Va como parámetro y no leído de dentro por lo mismo que la llave pública:
+    este módulo no tiene por qué saber a qué producto sirve.
 
     El orden de las comprobaciones no es casual: hasta que la firma no vale,
     nada de lo que dice el fichero se puede repetir en pantalla, porque lo
@@ -168,7 +185,14 @@ def verificar(texto, llave_publica, huella_maquina, hoy):
     desde = datetime.date.fromisoformat(datos["desde"])
     dias = (hasta - hoy).days
     conocido = {"negocio": datos["negocio"], "edicion": datos["edicion"],
-                "maquina": datos["maquina"], "hasta": hasta, "dias_restantes": dias}
+                "producto": datos["producto"], "maquina": datos["maquina"],
+                "hasta": hasta, "dias_restantes": dias}
+
+    # El producto antes que la máquina: si alguien mete aquí la licencia de
+    # otro programa, "esta licencia es de otro programa" explica mejor lo que
+    # pasa que "es de otra computadora", aunque las dos cosas fallen.
+    if normalizar_producto(datos["producto"]) != normalizar_producto(producto):
+        return Veredicto(SIN_LICENCIA, OTRO_PRODUCTO, **conocido)
 
     if normalizar_maquina(datos["maquina"]) != normalizar_maquina(huella_maquina):
         return Veredicto(SIN_LICENCIA, OTRA_MAQUINA, **conocido)

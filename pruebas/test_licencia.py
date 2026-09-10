@@ -27,22 +27,23 @@ PUBLICA = llave_publica_de(PRIVADA)
 OTRA_PRIVADA = bytes(range(100, 132))
 
 MAQUINA = "A7K2-3M4P-XR7T"
+PRODUCTO = "MiTienda"
 HOY = datetime.date(2026, 9, 15)
 
 
 def licencia_de_prueba(negocio="Bodega La Esquina", maquina=MAQUINA,
                        desde="2026-09-15", hasta="2027-09-15",
-                       edicion="completa", privada=PRIVADA):
+                       edicion="completa", producto=PRODUCTO, privada=PRIVADA):
     """El texto completo de un licencia.lic recién emitido."""
-    datos = {"negocio": negocio, "maquina": maquina, "desde": desde,
-             "hasta": hasta, "edicion": edicion}
+    datos = {"producto": producto, "negocio": negocio, "maquina": maquina,
+             "desde": desde, "hasta": hasta, "edicion": edicion}
     return licencia.componer(datos, firmar(privada, licencia.texto_canonico(datos)))
 
 
 class UnaLicenciaEnRegla(unittest.TestCase):
 
     def test_dentro_de_fecha_y_en_su_maquina_esta_activa(self):
-        v = licencia.verificar(licencia_de_prueba(), PUBLICA, MAQUINA, HOY)
+        v = licencia.verificar(licencia_de_prueba(), PUBLICA, MAQUINA, HOY, PRODUCTO)
         self.assertEqual(v.estado, licencia.ACTIVA)
         self.assertEqual(v.negocio, "Bodega La Esquina")
         self.assertEqual(v.edicion, "completa")
@@ -51,7 +52,7 @@ class UnaLicenciaEnRegla(unittest.TestCase):
     def test_el_texto_compuesto_se_vuelve_a_leer_igual(self):
         texto = licencia_de_prueba(negocio="El Rincón")
         self.assertTrue(texto.startswith(licencia.CABECERA))
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, HOY)
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO)
         self.assertEqual(v.estado, licencia.ACTIVA)
         self.assertEqual(v.negocio, "El Rincón")
 
@@ -59,19 +60,19 @@ class UnaLicenciaEnRegla(unittest.TestCase):
         """El doble acento de PowerShell ya ha mordido en este proyecto; si
         la firma se calculara sobre otra codificación, esto fallaría."""
         texto = licencia_de_prueba(negocio="Panadería La Ñapa de José")
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, HOY)
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO)
         self.assertEqual(v.estado, licencia.ACTIVA)
         self.assertEqual(v.negocio, "Panadería La Ñapa de José")
 
     def test_windows_puede_guardarlo_con_crlf_y_sigue_valiendo(self):
         """El cliente lo va a abrir con el Bloc de notas tarde o temprano."""
         texto = licencia_de_prueba().replace("\n", "\r\n") + "\r\n\r\n"
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).estado,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).estado,
                          licencia.ACTIVA)
 
     def test_espacios_de_sobra_alrededor_de_los_valores_no_estorban(self):
         texto = licencia_de_prueba().replace("negocio: ", "negocio:   ") + "   "
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).estado,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).estado,
                          licencia.ACTIVA)
 
 
@@ -81,7 +82,7 @@ class ElCalendario(unittest.TestCase):
     def estado_a(self, dias_antes_de_vencer):
         hasta = datetime.date(2027, 9, 15)
         hoy = hasta - datetime.timedelta(days=dias_antes_de_vencer)
-        return licencia.verificar(licencia_de_prueba(), PUBLICA, MAQUINA, hoy)
+        return licencia.verificar(licencia_de_prueba(), PUBLICA, MAQUINA, hoy, PRODUCTO)
 
     def test_con_mas_de_treinta_dias_por_delante_no_molesta(self):
         self.assertEqual(self.estado_a(31).estado, licencia.ACTIVA)
@@ -113,21 +114,21 @@ class ElCalendario(unittest.TestCase):
         cartel de renovar cada vez que se abre, y no es una renovación."""
         texto = licencia_de_prueba(desde="2026-09-15", hasta="2026-09-18",
                                    edicion="tecnico")
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 17))
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 17), PRODUCTO)
         self.assertEqual(v.estado, licencia.ACTIVA)
         self.assertEqual(v.edicion, "tecnico")
 
     def test_una_licencia_de_tecnico_tambien_vence(self):
         texto = licencia_de_prueba(desde="2026-09-15", hasta="2026-09-18",
                                    edicion="tecnico")
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 19))
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 19), PRODUCTO)
         self.assertEqual(v.estado, licencia.VENCIDA)
 
     def test_si_hoy_es_anterior_a_la_emision_el_reloj_esta_mal(self):
         """Nadie tiene una licencia emitida el mes que viene. O el reloj de
         Windows está atrasado, o alguien lo ha atrasado a propósito."""
         v = licencia.verificar(licencia_de_prueba(desde="2026-09-15"), PUBLICA,
-                               MAQUINA, datetime.date(2026, 9, 14))
+                               MAQUINA, datetime.date(2026, 9, 14), PRODUCTO)
         self.assertEqual(v.estado, licencia.RELOJ_ATRASADO)
 
 
@@ -138,72 +139,111 @@ class LoQueSeRechaza(unittest.TestCase):
     def test_sin_fichero_no_hay_licencia(self):
         for vacio in (None, "", "   \n  "):
             with self.subTest(texto=repr(vacio)):
-                v = licencia.verificar(vacio, PUBLICA, MAQUINA, HOY)
+                v = licencia.verificar(vacio, PUBLICA, MAQUINA, HOY, PRODUCTO)
                 self.assertEqual(v.estado, licencia.SIN_LICENCIA)
                 self.assertEqual(v.motivo, licencia.NO_HAY_ARCHIVO)
 
     def test_un_fichero_que_no_es_una_licencia(self):
-        v = licencia.verificar("hola que tal", PUBLICA, MAQUINA, HOY)
+        v = licencia.verificar("hola que tal", PUBLICA, MAQUINA, HOY, PRODUCTO)
         self.assertEqual(v.estado, licencia.SIN_LICENCIA)
         self.assertEqual(v.motivo, licencia.FORMATO)
 
     def test_una_cabecera_de_otra_version(self):
         texto = licencia_de_prueba().replace(licencia.CABECERA, "MiTienda-Licencia-v9")
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).motivo,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).motivo,
                          licencia.FORMATO)
 
     def test_si_falta_un_campo_no_se_intenta_adivinar(self):
         texto = "\n".join(l for l in licencia_de_prueba().splitlines()
                           if not l.startswith("edicion:"))
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).motivo,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).motivo,
                          licencia.FORMATO)
 
     def test_una_fecha_que_no_es_una_fecha(self):
         texto = licencia_de_prueba(hasta="el año que viene")
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).motivo,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).motivo,
                          licencia.FORMATO)
 
     def test_una_edicion_inventada(self):
         texto = licencia_de_prueba(edicion="ilimitada")
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).motivo,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).motivo,
                          licencia.FORMATO)
 
     def test_cambiarle_la_fecha_a_mano_invalida_la_firma(self):
         """El ataque más obvio de todos: abrir el fichero y estirar el año."""
         texto = licencia_de_prueba().replace("hasta: 2027-09-15", "hasta: 2037-09-15")
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, HOY)
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO)
         self.assertEqual(v.estado, licencia.SIN_LICENCIA)
         self.assertEqual(v.motivo, licencia.FIRMA)
 
     def test_cambiarle_el_negocio_a_mano_tambien(self):
         texto = licencia_de_prueba().replace("Bodega La Esquina", "Bodega La Otra")
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).motivo,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).motivo,
                          licencia.FIRMA)
 
     def test_una_licencia_firmada_por_otro_no_vale(self):
         texto = licencia_de_prueba(privada=OTRA_PRIVADA)
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).motivo,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).motivo,
                          licencia.FIRMA)
 
     def test_una_firma_recortada_al_copiar_y_pegar(self):
         texto = licencia_de_prueba()
         texto = texto[:texto.rindex("\n") - 10]
-        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY).estado,
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).estado,
                          licencia.SIN_LICENCIA)
 
     def test_la_licencia_del_vecino_no_abre_esta_caja(self):
         """Esto es lo que impide que un cliente le pase la carpeta a otro."""
-        v = licencia.verificar(licencia_de_prueba(), PUBLICA, "B3F5-2QW7-LM6D", HOY)
+        v = licencia.verificar(licencia_de_prueba(), PUBLICA, "B3F5-2QW7-LM6D", HOY, PRODUCTO)
         self.assertEqual(v.estado, licencia.SIN_LICENCIA)
         self.assertEqual(v.motivo, licencia.OTRA_MAQUINA)
         self.assertEqual(v.negocio, "Bodega La Esquina",
                          "hace falta para poder decirle de quien es la que tiene")
 
+    def test_la_licencia_de_otro_programa_no_abre_este(self):
+        """Lo que impide que una licencia barata de un producto abra otro más
+        caro. Antes de que existiera el campo `producto`, lo unico que
+        separaba dos productos era usar llaves distintas: con la misma llave,
+        la licencia de uno abria el otro sin quejarse."""
+        texto = licencia_de_prueba(producto="MiBodega")
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO)
+        self.assertEqual(v.estado, licencia.SIN_LICENCIA)
+        self.assertEqual(v.motivo, licencia.OTRO_PRODUCTO)
+        self.assertEqual(v.producto, "MiBodega",
+                         "hace falta para poder decirle de que programa es")
+
+    def test_el_nombre_del_producto_tampoco_distingue_mayusculas(self):
+        """Se teclea a mano al emitir; una mayuscula no puede dejar sin abrir
+        a un cliente que pago."""
+        texto = licencia_de_prueba(producto="mitienda")
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, "MiTienda").estado,
+                         licencia.ACTIVA)
+
+    def test_cambiarle_el_producto_a_mano_invalida_la_firma(self):
+        """El campo va firmado, no es sólo una etiqueta."""
+        texto = licencia_de_prueba(producto="MiBodega").replace("MiBodega", "MiTienda")
+        self.assertEqual(licencia.verificar(texto, PUBLICA, MAQUINA, HOY, PRODUCTO).motivo,
+                         licencia.FIRMA)
+
+    def test_una_licencia_de_la_version_vieja_ya_no_vale(self):
+        """Las v1 no llevaban producto. No hay ninguna en la calle -esto se
+        cambio antes de vender la primera copia-, asi que se rechazan y ya."""
+        vieja = ("MiTienda-Licencia-v1\n"
+                 "negocio: Bodega La Esquina\n"
+                 f"maquina: {MAQUINA}\n"
+                 "desde: 2026-09-15\n"
+                 "hasta: 2027-09-15\n"
+                 "edicion: completa\n"
+                 "firma: " + "A" * 104 + "\n")
+        v = licencia.verificar(vieja, PUBLICA, MAQUINA, HOY, PRODUCTO)
+        self.assertEqual(v.estado, licencia.SIN_LICENCIA)
+        self.assertEqual(v.motivo, licencia.FORMATO)
+
     def test_el_codigo_de_maquina_no_distingue_mayusculas_ni_guiones(self):
         """La cajera lo va a dictar por telefono y a teclear a mano."""
         for escrito_asi in ("a7k2-3m4p-xr7t", "A7K23M4PXR7T", " A7K2-3M4P-XR7T "):
             with self.subTest(maquina=escrito_asi):
-                v = licencia.verificar(licencia_de_prueba(), PUBLICA, escrito_asi, HOY)
+                v = licencia.verificar(licencia_de_prueba(), PUBLICA, escrito_asi, HOY, PRODUCTO)
                 self.assertEqual(v.estado, licencia.ACTIVA)
 
 

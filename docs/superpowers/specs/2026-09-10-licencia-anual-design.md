@@ -99,7 +99,8 @@ compila.
 `licencia.lic`, texto plano UTF-8:
 
 ```
-MiTienda-Licencia-v1
+MiTienda-Licencia-v2
+producto: MiTienda
 negocio: Bodega La Esquina
 maquina: A7K2-3M4P-XR7T
 desde: 2026-09-15
@@ -111,6 +112,13 @@ firma: MFRGGZDF MZTWQ2LK NNWG23TP OBYGC4TU ...
 - `edicion` es `completa` o `tecnico`.
 - `firma` son 64 bytes en base32 (104 caracteres), partidos en grupos de 8 para
   que se lea. Los espacios se ignoran al verificar.
+- `producto` es el nombre del programa al que pertenece la licencia
+  (`NOMBRE_APP`). Se compara sin distinguir mayúsculas, porque se teclea a
+  mano al emitir. **Es lo único que separa las licencias de dos productos
+  distintos** cuando ambos se firman con la misma llave: sin este campo, una
+  licencia barata de un producto abriría el otro sin quejarse. Se añadió el
+  mismo día, antes de vender la primera copia, que es el único momento en que
+  cambiar el formato no le cuesta nada a nadie.
 - Es legible a propósito: el cliente puede abrirlo y entender qué compró.
 
 **Canonicalización.** La firma no se calcula sobre el texto crudo del archivo,
@@ -118,6 +126,7 @@ sino sobre una cadena reconstruida a partir de los campos ya analizados, en
 orden fijo y unidos por `\n`:
 
 ```
+producto: MiTienda
 negocio: Bodega La Esquina
 maquina: A7K2-3M4P-XR7T
 desde: 2026-09-15

@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from herramientas.firma import firmar  # noqa: E402
 from herramientas.generar_llaves import RUTA_PRIVADA, leer_llave  # noqa: E402
-from lddl import licencia  # noqa: E402
+from lddl import NOMBRE_APP, licencia  # noqa: E402
 
 # El alfabeto de base32, que es de donde sale el codigo de maquina. No tiene
 # 0, 1, 8 ni 9, asi que un codigo con esas cifras esta mal copiado seguro.
@@ -52,15 +52,24 @@ def sumar_meses(fecha, meses):
 
 
 def emitir(privada, negocio, maquina, meses=None, dias=None,
-           edicion="completa", desde=None):
-    """El texto completo de un licencia.lic, ya firmado."""
+           edicion="completa", desde=None, producto=None):
+    """El texto completo de un licencia.lic, ya firmado.
+
+    `producto` sale por defecto del NOMBRE_APP de esta copia del proyecto, así
+    que el generador de cada producto acierta solo y no hay que acordarse de
+    escribirlo. Es lo que impide que la licencia de un programa abra otro.
+    """
     negocio = str(negocio or "").strip()
+    producto = str(producto if producto is not None else NOMBRE_APP).strip()
     if not negocio:
         raise ValueError("hace falta el nombre del negocio")
-    if "\n" in negocio or "\r" in negocio:
+    if not producto:
+        raise ValueError("hace falta el nombre del producto")
+    for texto, que in ((negocio, "del negocio"), (producto, "del producto")):
         # Un salto de linea partiria el fichero y dejaria colar un campo
         # falso detras del nombre.
-        raise ValueError("el nombre del negocio no puede llevar saltos de linea")
+        if "\n" in texto or "\r" in texto:
+            raise ValueError(f"el nombre {que} no puede llevar saltos de linea")
     if edicion not in licencia.EDICIONES:
         raise ValueError(f"edicion desconocida: {edicion}. "
                          f"Las que hay: {', '.join(licencia.EDICIONES)}")
@@ -79,7 +88,7 @@ def emitir(privada, negocio, maquina, meses=None, dias=None,
             raise ValueError("una licencia de cero dias no sirve de nada")
         hasta = desde + datetime.timedelta(days=dias)
 
-    datos = {"negocio": negocio, "maquina": maquina,
+    datos = {"producto": producto, "negocio": negocio, "maquina": maquina,
              "desde": desde.isoformat(), "hasta": hasta.isoformat(),
              "edicion": edicion}
     return licencia.componer(datos, firmar(privada, licencia.texto_canonico(datos)))
@@ -93,6 +102,8 @@ def main(argumentos=None):
     analizador.add_argument("--dias", type=int)
     analizador.add_argument("--tecnico", action="store_true",
                             help="licencia corta de soporte, marcada como tal")
+    analizador.add_argument("--producto", default=NOMBRE_APP,
+                            help=f"para que programa vale (por defecto {NOMBRE_APP})")
     analizador.add_argument("--llave", default=RUTA_PRIVADA)
     analizador.add_argument("--salida", default="licencia.lic")
     opciones = analizador.parse_args(argumentos)
@@ -110,7 +121,7 @@ def main(argumentos=None):
 
     try:
         texto = emitir(privada, opciones.negocio, opciones.maquina, meses=meses,
-                       dias=dias,
+                       dias=dias, producto=opciones.producto,
                        edicion="tecnico" if opciones.tecnico else "completa")
     except ValueError as error:
         print(f"No se emitio nada: {error}")
@@ -122,6 +133,7 @@ def main(argumentos=None):
     datos, _firma = licencia.analizar(texto)
     print(f"Escrito en {opciones.salida}")
     print()
+    print(f"  Producto {datos['producto']}")
     print(f"  Negocio  {datos['negocio']}")
     print(f"  Maquina  {datos['maquina']}")
     print(f"  Vale de  {datos['desde']}  hasta  {datos['hasta']}")

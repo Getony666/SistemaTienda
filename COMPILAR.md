@@ -150,6 +150,14 @@ NOMBRE_APP = "MiTienda"
 Cámbialo ahí y ajusta el `--name` y el `--icon` al compilar. Con eso cambian
 el título de la ventana, el de la API y el del ejecutable.
 
+**Ese nombre va firmado dentro de la licencia**, en el campo `producto`, así
+que la licencia de un programa no abre otro aunque compartan la llave. Si
+montas un producto aparte de verdad, cambia también `CLAVE_REGISTRO` en
+`lddl/almacen_licencia.py` (si no, los dos comparten la marca del primer
+arranque en la misma computadora), `SAL` en `lddl/maquina.py` y `CABECERA` en
+`lddl/licencia.py`, y dale su propio par de llaves. Está detallado en la skill
+`desplegar-mitienda`.
+
 ## Antes de entregar
 
 ```

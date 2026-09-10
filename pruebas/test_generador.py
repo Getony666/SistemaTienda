@@ -24,6 +24,7 @@ from herramientas.firma import llave_publica_de  # noqa: E402
 from lddl import licencia  # noqa: E402
 
 MAQUINA = "A7K2-3M4P-XR7T"
+PRODUCTO = "MiTienda"
 PRIVADA = bytes(range(32))
 PUBLICA = llave_publica_de(PRIVADA)
 
@@ -68,14 +69,14 @@ class EmitirUnaLicencia(unittest.TestCase):
     def test_lo_que_emite_lo_acepta_el_programa(self):
         texto = generar_licencia.emitir(PRIVADA, "Bodega La Esquina", MAQUINA,
                                         meses=12, desde=datetime.date(2026, 9, 15))
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 10, 1))
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 10, 1), PRODUCTO)
         self.assertEqual(v.estado, licencia.ACTIVA)
         self.assertEqual(v.negocio, "Bodega La Esquina")
 
     def test_doce_meses_son_un_ano_justo(self):
         texto = generar_licencia.emitir(PRIVADA, "X", MAQUINA, meses=12,
                                         desde=datetime.date(2026, 9, 15))
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 15))
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 15), PRODUCTO)
         self.assertEqual(v.hasta, datetime.date(2027, 9, 15))
 
     def test_un_mes_desde_el_31_cae_en_el_ultimo_dia_del_mes_corto(self):
@@ -83,20 +84,20 @@ class EmitirUnaLicencia(unittest.TestCase):
         en febrero, y hay que decidir donde cae en vez de reventar."""
         texto = generar_licencia.emitir(PRIVADA, "X", MAQUINA, meses=1,
                                         desde=datetime.date(2027, 1, 31))
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2027, 1, 31))
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2027, 1, 31), PRODUCTO)
         self.assertEqual(v.hasta, datetime.date(2027, 2, 28))
 
     def test_se_puede_emitir_por_dias_en_vez_de_por_meses(self):
         texto = generar_licencia.emitir(PRIVADA, "X", MAQUINA, dias=3,
                                         desde=datetime.date(2026, 9, 15))
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 15))
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 15), PRODUCTO)
         self.assertEqual(v.hasta, datetime.date(2026, 9, 18))
 
     def test_la_de_tecnico_sale_marcada_como_tal(self):
         texto = generar_licencia.emitir(PRIVADA, "X", MAQUINA, dias=3,
                                         edicion="tecnico",
                                         desde=datetime.date(2026, 9, 15))
-        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 16))
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date(2026, 9, 16), PRODUCTO)
         self.assertEqual(v.edicion, "tecnico")
 
     def test_el_codigo_de_maquina_se_guarda_con_guiones_aunque_llegue_pegado(self):
@@ -104,6 +105,47 @@ class EmitirUnaLicencia(unittest.TestCase):
         texto = generar_licencia.emitir(PRIVADA, "X", "a7k23m4pxr7t", meses=12,
                                         desde=datetime.date(2026, 9, 15))
         self.assertIn("maquina: A7K2-3M4P-XR7T", texto)
+
+
+class ElProductoAlQuePerteneceLaLicencia(unittest.TestCase):
+    """Lo que impide que la licencia de un producto abra otro. Sin esto, dos
+    programas firmados con la misma llave se aceptarian las licencias entre
+    ellos sin quejarse."""
+
+    def test_por_defecto_pone_el_nombre_de_este_programa(self):
+        """Cada copia del proyecto lleva su NOMBRE_APP, asi que el generador
+        de esa copia acierta solo y no hay que acordarse de escribirlo."""
+        from lddl import NOMBRE_APP
+
+        texto = generar_licencia.emitir(PRIVADA, "X", MAQUINA, meses=12)
+        self.assertIn(f"producto: {NOMBRE_APP}", texto)
+
+    def test_se_le_puede_decir_otro(self):
+        texto = generar_licencia.emitir(PRIVADA, "X", MAQUINA, meses=12,
+                                        producto="MiBodega")
+        self.assertIn("producto: MiBodega", texto)
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date.today(),
+                               "MiBodega")
+        self.assertEqual(v.estado, licencia.ACTIVA)
+
+    def test_esa_licencia_no_abre_el_otro_programa(self):
+        texto = generar_licencia.emitir(PRIVADA, "X", MAQUINA, meses=12,
+                                        producto="MiBodega")
+        v = licencia.verificar(texto, PUBLICA, MAQUINA, datetime.date.today(),
+                               "MiTienda")
+        self.assertEqual(v.motivo, licencia.OTRO_PRODUCTO)
+
+    def test_un_producto_sin_nombre_se_rechaza(self):
+        for malo in ("", "   "):
+            with self.subTest(producto=repr(malo)):
+                with self.assertRaises(ValueError):
+                    generar_licencia.emitir(PRIVADA, "X", MAQUINA, meses=12,
+                                            producto=malo)
+
+    def test_un_salto_de_linea_en_el_producto_tambien(self):
+        with self.assertRaises(ValueError):
+            generar_licencia.emitir(PRIVADA, "X", MAQUINA, meses=12,
+                                    producto="MiTienda\nedicion: tecnico")
 
 
 class LoQueElGeneradorSeNiegaAHacer(unittest.TestCase):

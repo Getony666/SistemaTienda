@@ -192,6 +192,23 @@ class CuandoNoSePuedeVender(ConTodoAparte):
         self.assertEqual(v.estado, licencia.RELOJ_ATRASADO)
         self.assertFalse(estado_licencia.puede_escribir())
 
+    def test_la_licencia_de_otro_programa_no_abre_este(self):
+        """El caso que esto viene a tapar: dos productos firmados con la misma
+        llave. Sin el campo `producto`, la licencia barata de uno abriria el
+        caro sin quejarse."""
+        self.poner_licencia(producto="MiBodega")
+        v = estado_licencia.comprobar(HOY)
+        self.assertEqual(v.estado, licencia.SIN_LICENCIA)
+        self.assertEqual(v.motivo, licencia.OTRO_PRODUCTO)
+        self.assertFalse(estado_licencia.puede_escribir())
+
+    def test_y_lo_dice_con_esas_palabras(self):
+        self.poner_licencia(producto="MiBodega")
+        v = estado_licencia.comprobar(HOY)
+        mensaje = estado_licencia.explicar(v)
+        self.assertIn("otro programa", mensaje)
+        self.assertIn(estado_licencia.PRODUCTO, mensaje)
+
     def test_un_licencia_lic_manipulado_a_mano(self):
         self.poner_licencia()
         texto = almacen_licencia.leer_licencia()

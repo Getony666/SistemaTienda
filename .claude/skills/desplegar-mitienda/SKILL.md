@@ -156,6 +156,23 @@ No la lleves en una USB a casa de un cliente: las licencias de técnico
 **Si le reinstalan Windows al cliente**, el código de máquina cambia y hay que
 emitirle una licencia nueva. Va a pasar.
 
+### Si algún día montas otro producto
+
+La licencia lleva firmado el nombre del programa al que pertenece
+(`NOMBRE_APP`), así que la de un producto **no abre otro** aunque los dos usen
+la misma llave. El generador de cada copia del proyecto pone el suyo solo; para
+emitir la de otro producto desde aquí:
+
+```
+python herramientas/generar_licencia.py "Negocio" CODIGO --meses 12 --producto MiBodega
+```
+
+Y en la copia de ese otro proyecto hay que cambiar, además de `NOMBRE_APP`:
+`CLAVE_REGISTRO` en `lddl/almacen_licencia.py` -si no, los dos programas
+comparten la marca del primer arranque en la misma computadora-, `SAL` en
+`lddl/maquina.py` y `CABECERA` en `lddl/licencia.py`. Y un par de llaves
+propio, con `generar_llaves.py --privada ... --publica ...`.
+
 **Nunca copiar LDDL a una tienda**: `.git/config` lleva el token de GitHub en
 texto plano, y además les entregaría el código fuente completo.
 

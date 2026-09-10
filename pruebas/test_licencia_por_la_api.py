@@ -213,6 +213,14 @@ class LaRutaDeLaLicencia(ConLaApiEnPie):
                                            json={"nombre": "Ya Se Puede"}).status_code,
                          201)
 
+    def test_pegar_la_licencia_de_otro_programa_se_rechaza_con_su_motivo(self):
+        self.con_licencia_vencida()
+        ajena = emitir(PRIVADA, "La de Otro", MAQUINA, meses=12, desde=HOY,
+                       producto="MiBodega")
+        r = self.cliente.post("/licencia", json={"texto": ajena})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("otro programa", r.json()["detail"])
+
     def test_pegar_una_licencia_de_otra_maquina_se_rechaza_con_su_motivo(self):
         self.con_licencia_vencida()
         ajena = emitir(PRIVADA, "La Ajena", "B3F5-2QW7-LM6D", meses=12, desde=HOY)
