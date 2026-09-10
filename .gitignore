@@ -9,5 +9,11 @@ dist/
 tienda.db
 config_caja.json
 
+# El sistema de licencias. La llave privada firma las licencias de
+# todos los clientes: si se sube a GitHub, cualquiera emite las suyas.
+*.key
+licencia.lic
+herramientas/llaves/
+
 .venv/
 venv/
