@@ -45,7 +45,7 @@ cd ..
 
 python -m PyInstaller --noconfirm --onefile --windowed ^
     --name MiTienda ^
-    --icon logo_despensa.ico ^
+    --icon icono_pos.ico ^
     --add-data "interfaz/dist;interfaz/dist" ^
     --collect-all webview ^
     --collect-all uvicorn ^
@@ -67,8 +67,10 @@ Sale en `dist\MiTienda.exe`, unos 21 MB.
   archivos que PyInstaller no descubre solo.
 - `--collect-all uvicorn` — carga sus protocolos por nombre en tiempo de
   ejecución. Sin esto compila bien y **falla al arrancar**.
-- Las exclusiones — sólo las usaba la ventana vieja de tkinter. Quitarlas
-  baja el ejecutable de 41 MB a 21 MB.
+- Las exclusiones — las usaba la ventana vieja de tkinter, que ya no está en
+  el proyecto. Se dejan igual en el comando: son inofensivas y evitan que
+  alguna dependencia nueva las arrastre de vuelta sin que nadie lo note.
+  Quitarlas baja el ejecutable de 41 MB a 21 MB.
 
 ### Si el .exe no arranca
 
@@ -170,8 +172,7 @@ Cámbialo ahí y ajusta `--name` e `--icon` al compilar.
 | `lddl/usuarios.py` | usuarios, roles, permisos, PIN cifrado |
 | `lddl/esquema.py` | crea y migra tablas; `preparar_base()` al arrancar |
 | `interfaz/src/` | React |
-| `ventas.py`, `lddl/ui/` | ventana vieja de tkinter: **no se compila**, pero |
-| | de ella cuelgan las pruebas de caracterización. No borrar. |
+| `pruebas/acta_de_la_app_vieja.json` | testimonio de la ventana de tkinter que hubo antes de React |
 
 ## Detalles que se olvidan
 

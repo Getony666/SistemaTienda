@@ -1,3 +1,14 @@
-ttkbootstrap>=2.2.2
-pandas
-openpyxl
+# Lo que MiTienda necesita de verdad para correr.
+#
+# Aquí había `pandas` y `openpyxl`: sólo los usaba la ventana vieja de
+# tkinter, que se retiró el 2026-09-10, así que se fueron con ella.
+# El resto de lo que importa el programa -sqlite3, json, hashlib...- viene
+# con Python, no hace falta instalarlo.
+
+fastapi>=0.141
+uvicorn>=0.52
+pydantic>=2.13
+pywebview>=5.0
+
+# Sólo para compilar el .exe, no para correr el programa:
+pyinstaller>=6.0

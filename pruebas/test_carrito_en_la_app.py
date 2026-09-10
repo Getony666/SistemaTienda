@@ -1,14 +1,25 @@
-"""El carrito de la ventana real se comporta igual que el módulo.
+"""El carrito de la ventana real se comportaba igual que el módulo.
 
-Conduce la aplicación oculta: llena la tabla de productos, selecciona uno y
-usa el botón de "Agregar al Carrito" como lo haría la cajera.
+No hay aquí una tabla de casos que mover a `pruebas/casos.py`: estas pruebas
+no comparaban números fijos, sino que la ventana, al pulsar "Agregar al
+Carrito" con un producto real de `tienda_de_pruebas.db`, hiciera exactamente
+lo mismo que hoy hace `lddl/carrito.py`. Esa comprobación se hizo mientras
+`lddl/ui/` seguía en el proyecto; el producto que se usó y lo que la ventana
+contestó para él quedaron grabados en `pruebas/acta_de_la_app_vieja.json`
+justo antes de retirarla (`pruebas/test_carrito_en_la_app.py` en el acta).
 
-Esta prueba pasa tanto antes como después de que la interfaz empiece a usar
-`lddl/carrito.py`: es la red que permite hacer el cambio sin ir a ciegas.
+`ElActaDeLaVentanaViejaLoConfirma` ya no abre ninguna ventana: reconstruye,
+con las funciones puras de `lddl/carrito.py`, lo que la pantalla hacía con
+ese mismo producto, y compara contra lo que quedó grabado. Donde el
+comportamiento no vivía en el módulo -que al marcar la pastilla de
+"Transferencia" lo pagado se ajuste solo al total, o que un carrito vacío
+deje el total en cero- lo que se comprueba es que el acta lo recogió tal
+como se esperaba; esa parte de la interfaz se fue con la ventana.
 
     python -m unittest discover -s pruebas -v
 """
 
+import json
 import os
 import sys
 import unittest
@@ -16,117 +27,81 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import base  # noqa: E402
-
 from lddl import carrito as c  # noqa: E402
 
-try:
-    import ttkbootstrap as tb
-    from lddl.ui import VentanaVentas
-    HAY_PANTALLA = True
-except Exception:
-    HAY_PANTALLA = False
+_AQUI = os.path.dirname(os.path.abspath(__file__))
+_RUTA_ACTA = os.path.join(_AQUI, "acta_de_la_app_vieja.json")
+with open(_RUTA_ACTA, encoding="utf-8") as _f:
+    _ACTA = json.load(_f)["carrito_en_la_app"]
+
+_PRODUCTO = _ACTA["producto_usado"]
 
 
-# Estas pruebas abren la ventana de verdad, y la ventana lee la base al
-# construirse. Se la cambiamos por una copia de la de pruebas antes de que
-# se monte nada, y se deshace al terminar el fichero.
-_CARPETA = None
+def _agregar(carrito):
+    nuevo, motivo = c.agregar_unidad(
+        carrito, _PRODUCTO["id"], _PRODUCTO["nombre"], _PRODUCTO["precio"],
+        _PRODUCTO["stock"], _PRODUCTO["tipo"], _PRODUCTO["unidad"])
+    assert motivo is None, f"agregar_unidad devolvió {motivo!r}"
+    return nuevo
 
 
-def setUpModule():
-    global _CARPETA
-    _CARPETA = base.empezar_modulo()
+class ElActaDeLaVentanaViejaLoConfirma(unittest.TestCase):
+    """Compara `lddl/carrito.py` contra lo que la ventana real hacía.
 
-
-def tearDownModule():
-    base.terminar_modulo(_CARPETA)
-
-
-@unittest.skipUnless(HAY_PANTALLA, "hace falta entorno gráfico")
-class ElCarritoDeLaVentana(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.root = tb.Window(themename="flatly")
-        cls.root.withdraw()
-        cls.v = VentanaVentas(cls.root)
-        cls.v.mostrar_mensaje = lambda *a, **k: True
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.root.destroy()
-
-    def setUp(self):
-        self.v.carrito = []
-        self.v.transferencia_var.set(0)
-        self.v.actualizar_carrito()
-
-    def _seleccionar_producto_con_stock(self):
-        """Deja seleccionado en la tabla el primer producto que tenga stock."""
-        self.v.cargar_productos()
-        for item in self.v.tabla_resultados.get_children():
-            valores = self.v.tabla_resultados.item(item)["values"]
-            if float(valores[3]) > 0:
-                self.v.tabla_resultados.selection_set(item)
-                return valores
-        self.skipTest("no hay ningún producto con stock en la base")
+    El producto usado (`_PRODUCTO`) es el mismo que la ventana encontró en
+    `tienda_de_pruebas.db` al levantar el acta: el primero con stock de la
+    tabla de resultados, tal como lo hacía `agregar_desde_resultados`.
+    """
 
     def test_agregar_desde_la_tabla_mete_una_unidad(self):
-        valores = self._seleccionar_producto_con_stock()
-        self.v.agregar_desde_resultados()
-
-        self.assertEqual(len(self.v.carrito), 1)
-        linea = self.v.carrito[0]
-        self.assertEqual(linea["id"], int(valores[0]))
-        self.assertEqual(linea["nombre"], valores[1])
-        self.assertEqual(linea["cantidad"], 1)
+        carrito = _agregar([])
+        esperado = _ACTA["agregar_una_unidad"]["carrito"]
+        self.assertEqual(carrito, esperado)
+        self.assertEqual(len(carrito), 1)
+        self.assertEqual(carrito[0]["id"], _PRODUCTO["id"])
+        self.assertEqual(carrito[0]["nombre"], _PRODUCTO["nombre"])
+        self.assertEqual(carrito[0]["cantidad"], 1)
 
     def test_agregar_dos_veces_acumula_en_la_misma_linea(self):
-        self._seleccionar_producto_con_stock()
-        self.v.agregar_desde_resultados()
-        self.v.agregar_desde_resultados()
-
-        self.assertEqual(len(self.v.carrito), 1)
-        self.assertEqual(self.v.carrito[0]["cantidad"], 2)
+        carrito = _agregar(_agregar([]))
+        esperado = _ACTA["agregar_dos_veces"]["carrito"]
+        self.assertEqual(carrito, esperado)
+        self.assertEqual(len(carrito), 1)
+        self.assertEqual(carrito[0]["cantidad"], 2)
 
     def test_el_total_de_la_pantalla_coincide_con_el_del_modulo(self):
-        self._seleccionar_producto_con_stock()
-        self.v.agregar_desde_resultados()
-        self.v.agregar_desde_resultados()
-
-        esperado = c.total(self.v.carrito)
-        self.assertAlmostEqual(float(self.v.total_var.get()), esperado, places=6)
+        carrito = _agregar(_agregar([]))
+        total = c.total(carrito)
+        datos = _ACTA["total_de_pantalla"]
+        self.assertAlmostEqual(total, datos["total_modulo"], places=6)
+        self.assertAlmostEqual(total, float(datos["total_var"]), places=6)
 
     def test_la_tabla_muestra_lo_mismo_que_filas_para_tabla(self):
-        self._seleccionar_producto_con_stock()
-        self.v.agregar_desde_resultados()
+        carrito = _agregar([])
+        datos = _ACTA["tabla_muestra_lo_mismo"]
+        self.assertEqual(carrito, datos["carrito"])
 
-        filas_modulo = c.filas_para_tabla(self.v.carrito)
-        hijos = self.v.tabla_carrito.get_children()
-        self.assertEqual(len(hijos), len(filas_modulo))
+        filas = c.filas_para_tabla(carrito)
+        self.assertEqual(filas, datos["filas_modulo"])
 
-        mostrado = self.v.tabla_carrito.item(hijos[0])["values"]
-        esperado = filas_modulo[0]
+        mostrado = datos["tabla_mostrada"][0]
+        esperado = filas[0]
         self.assertEqual(str(mostrado[0]), esperado["nombre"])
         self.assertEqual(str(mostrado[1]), esperado["cantidad"])
         self.assertEqual(str(mostrado[2]), esperado["precio"])
         self.assertEqual(str(mostrado[3]), esperado["subtotal"])
 
     def test_con_la_pastilla_de_transferencia_lo_pagado_sigue_al_total(self):
-        self._seleccionar_producto_con_stock()
-        self.v.agregar_desde_resultados()
-        self.v.transferencia_var.set(1)
-        self.v.actualizar_carrito()
-
-        self.assertEqual(self.v.pagado_var.get(), self.v.total_var.get())
-        self.assertEqual(self.v.vuelto_var.get(), "0.00")
+        """Esto vivía en `actualizar_carrito`, no en el módulo: se comprueba
+        que quedó grabado como se esperaba, no se recalcula."""
+        datos = _ACTA["pastilla_transferencia"]
+        self.assertEqual(datos["pagado_var"], datos["total_var"])
+        self.assertEqual(datos["vuelto_var"], "0.00")
 
     def test_el_carrito_vacio_deja_el_total_en_cero(self):
-        self.v.carrito = []
-        self.v.actualizar_carrito()
-        self.assertEqual(self.v.total_var.get(), "0.00")
-        self.assertEqual(len(self.v.tabla_carrito.get_children()), 0)
+        datos = _ACTA["carrito_vacio"]
+        self.assertEqual(datos["total_var"], "0.00")
+        self.assertEqual(datos["hijos_tabla"], 0)
 
 
 if __name__ == "__main__":

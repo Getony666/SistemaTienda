@@ -217,7 +217,12 @@ class ElCostoViajaEnLaLista(SobreUnaCopia):
         self.assertEqual(len(productos[0]), 7, "falta el precio de compra al final")
 
     def test_las_posiciones_de_siempre_no_se_movieron(self):
-        """Los paneles de tkinter leen estas tuplas por indice."""
+        """Quien lee estas tuplas las lee por indice, no por nombre.
+
+        Lo heredamos de los paneles de tkinter, que ya no existen, pero el
+        orden sigue importando: `buscar_productos` devuelve tuplas crudas y
+        la API las desempaqueta por posicion.
+        """
         from lddl.productos import buscar_productos
 
         p = buscar_productos("")[0]

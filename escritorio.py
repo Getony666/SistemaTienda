@@ -10,10 +10,11 @@ Un solo programa, sin navegador a la vista y sin conexión a internet:
 Ésta es la interfaz del programa. Están los cuatro paneles: Ventas,
 Historial, Cambio de Divisa y Corte de Caja.
 
-La ventana de tkinter (`python ventas.py`) se queda en el repositorio porque
-de ella cuelgan las pruebas de caracterización, que son las que garantizan
-que las cuentas no cambiaron al mudarse. Ya no se trabaja ni se compila.
-Las dos abren la misma base de datos.
+Hubo una ventana de tkinter (`ventas.py`, `lddl/ui/`) antes que ésta. Se
+retiró del proyecto: su testimonio -lo que contestaba para los mismos casos
+que hoy cubren las pruebas de caracterización- quedó grabado en
+`pruebas/acta_de_la_app_vieja.json`, así que la garantía de que las cuentas
+no cambiaron al mudarse a React sigue en pie sin necesitar tkinter instalado.
 
     cd interfaz && npm install && npm run build
     cd .. && python escritorio.py

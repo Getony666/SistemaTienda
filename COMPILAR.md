@@ -13,7 +13,7 @@ cd ..
 
 python -m PyInstaller --noconfirm --onefile --windowed ^
     --name MiTienda ^
-    --icon logo_despensa.ico ^
+    --icon icono_pos.ico ^
     --add-data "interfaz/dist;interfaz/dist" ^
     --collect-all webview ^
     --collect-all uvicorn ^
@@ -42,9 +42,11 @@ las ventas.
 - **`--collect-all uvicorn`** — uvicorn carga sus protocolos y bucles por
   nombre, en tiempo de ejecución. Sin esto compila bien y falla al arrancar.
 
-- **`--exclude-module`** de pandas, matplotlib, tkinter y ttkbootstrap — sólo
-  los usaba la ventana vieja. Quitarlos baja el ejecutable de unos 43 MB a
-  unos 18 MB.
+- **`--exclude-module`** de pandas, matplotlib, tkinter y ttkbootstrap — los
+  usaba la ventana vieja de tkinter, que ya no está en el proyecto. Se dejan
+  igual en el comando: son inofensivas y evitan que alguna dependencia nueva
+  los arrastre de vuelta sin que nadie lo note. Quitarlos baja el ejecutable
+  de unos 43 MB a unos 18 MB.
 
 - **`--windowed`** — sin consola detrás. El precio es que los errores de
   arranque no se ven: para diagnosticarlos, compila igual pero con
@@ -64,11 +66,13 @@ vuelve a salir la ventana vacía, es lo primero que hay que mirar.
 
 ## La ventana de tkinter
 
-`ventas.py` y `lddl/ui/` siguen en el repositorio, pero **ya no se compilan**.
-Se quedan porque de ellos cuelgan las pruebas de caracterización, que son las
-que demuestran que las cuentas del cobro, del carrito y de las deudas no
-cambiaron al mudarse a React. Si algún día se borran, se borran esas pruebas
-con ellos, y se pierde esa red.
+`ventas.py` y `lddl/ui/` ya no están en el repositorio: se retiraron una vez
+que la interfaz de React quedó terminada. De ellos colgaban las pruebas de
+caracterización que demuestran que las cuentas del cobro, del carrito y de
+las deudas no cambiaron al mudarse a React; para no perder esa red, antes de
+borrar el código se hizo repasar a la ventana esos mismos casos una última
+vez y se grabó lo que contestó en `pruebas/acta_de_la_app_vieja.json`. Las
+pruebas comparan hoy contra ese acta en vez de abrir una ventana de verdad.
 
 ## Usuarios y permisos
 

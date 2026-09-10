@@ -1,0 +1,481 @@
+{
+  "_nota": "Esto es el testimonio de la ventana de tkinter de MiTienda (`ventas.py` y `lddl/ui/`), levantado justo antes de retirarla del proyecto. Los números de este fichero salieron de ejecutar esa ventana de verdad -oculta, sin mostrarla en pantalla-, no de los módulos que hoy hacen las cuentas (`lddl/calculo_cobro.py`, `lddl/carrito.py`). Por eso sirven de red: las pruebas de pruebas/test_equivalencia_con_la_app.py, pruebas/test_carrito_en_la_app.py y pruebas/test_registro_de_venta.py ya no abren ninguna ventana, sino que comparan lo que calculan esos módulos contra lo que está aquí guardado. Si algún día hace falta dudar de si el módulo calcula bien, este es el punto de comparación independiente: lo que la aplicación original, la que se usó en producción, contestaba para estos mismos casos. No se regenera solo: si hiciera falta volver a comprobar contra un programa de verdad, habría que reconstruir la ventana vieja desde el historial de git.",
+  "carrito_en_la_app": {
+    "agregar_dos_veces": {
+      "carrito": [
+        {
+          "cantidad": 2,
+          "id": 3,
+          "nombre": "Aceite 1000 ml",
+          "precio": 200.0,
+          "tipo": "unidad",
+          "unidad": "unidad"
+        }
+      ]
+    },
+    "agregar_una_unidad": {
+      "carrito": [
+        {
+          "cantidad": 1,
+          "id": 3,
+          "nombre": "Aceite 1000 ml",
+          "precio": 200.0,
+          "tipo": "unidad",
+          "unidad": "unidad"
+        }
+      ]
+    },
+    "carrito_vacio": {
+      "hijos_tabla": 0,
+      "total_var": "0.00"
+    },
+    "pastilla_transferencia": {
+      "pagado_var": "200.00",
+      "total_var": "200.00",
+      "vuelto_var": "0.00"
+    },
+    "producto_usado": {
+      "id": 3,
+      "nombre": "Aceite 1000 ml",
+      "precio": 200.0,
+      "stock": 48.0,
+      "tipo": "unidad",
+      "unidad": "unidad"
+    },
+    "tabla_muestra_lo_mismo": {
+      "carrito": [
+        {
+          "cantidad": 1,
+          "id": 3,
+          "nombre": "Aceite 1000 ml",
+          "precio": 200.0,
+          "tipo": "unidad",
+          "unidad": "unidad"
+        }
+      ],
+      "filas_modulo": [
+        {
+          "cantidad": "1 unidad",
+          "nombre": "Aceite 1000 ml",
+          "precio": "200.00",
+          "subtotal": "200.00"
+        }
+      ],
+      "tabla_mostrada": [
+        [
+          "Aceite 1000 ml",
+          "1 unidad",
+          "200.00",
+          "200.00",
+          "✖"
+        ]
+      ]
+    },
+    "total_de_pantalla": {
+      "total_modulo": 400.0,
+      "total_var": "400.00"
+    }
+  },
+  "discrepancias_encontradas_al_levantar_el_acta": [],
+  "equivalencia_con_la_app": {
+    "mixto": {
+      "efectivo insuficiente": [
+        "0.00",
+        "Efectivo: 500.00",
+        0.0,
+        "500"
+      ],
+      "sin transferencia": [
+        "200.00",
+        "Efectivo: 1200.00",
+        200.0,
+        "1200"
+      ],
+      "transferencia de mas": [
+        "0.00",
+        "",
+        0.0,
+        ""
+      ],
+      "transferencia negativa": [
+        "0.00",
+        "",
+        0.0,
+        ""
+      ],
+      "transferencia parcial": [
+        "0.00",
+        "Efectivo: 600.00 | Transferencia: 400.00",
+        0.0,
+        "600.00"
+      ],
+      "transferencia total": [
+        "0.00",
+        "Transferencia: 1000.00",
+        0.0,
+        "0.00"
+      ]
+    },
+    "referencia": {
+      "CUP centavos": 0.010000000000005116,
+      "CUP de mas": 50.0,
+      "CUP justo": 0.0,
+      "CUP mixto de mas": 100.0,
+      "CUP mixto justo": 0.0,
+      "CUP mixto no alcanza": 0.0,
+      "CUP nada": 0.0,
+      "CUP no alcanza": 0.0,
+      "CUP solo transferencia": 0.0,
+      "EUR de mas": 600.0,
+      "USD con CUP de mas": 500.0,
+      "USD con CUP efectivo": 0.0,
+      "USD con CUP transferencia": 0.0,
+      "USD con los dos CUP": 200.0,
+      "USD de mas": 1000.0,
+      "USD justo": 0.0,
+      "USD no alcanza sin CUP": 0.0,
+      "USD sin divisa solo CUP": 0.0,
+      "USD vuelto repartido": 1000.0,
+      "USD vuelto todo en divisa": 1000.0
+    },
+    "textos": {
+      "CUP centavos": [
+        "0.01",
+        "Efectivo: 100.00",
+        "",
+        ""
+      ],
+      "CUP de mas": [
+        "50.00",
+        "Efectivo: 2300.00",
+        "",
+        ""
+      ],
+      "CUP justo": [
+        "0.00",
+        "Efectivo: 2250.00",
+        "",
+        ""
+      ],
+      "CUP mixto de mas": [
+        "100.00",
+        "Efectivo: 400.00 | Transferencia: 700.00",
+        "",
+        ""
+      ],
+      "CUP mixto justo": [
+        "0.00",
+        "Efectivo: 400.00 | Transferencia: 600.00",
+        "",
+        ""
+      ],
+      "CUP mixto no alcanza": [
+        "0.00",
+        "Faltan 500.00 CUP",
+        "",
+        ""
+      ],
+      "CUP nada": [
+        "0.00",
+        "",
+        "",
+        ""
+      ],
+      "CUP no alcanza": [
+        "0.00",
+        "Faltan 250.00 CUP",
+        "",
+        ""
+      ],
+      "CUP solo transferencia": [
+        "0.00",
+        "Transferencia: 1000.00",
+        "",
+        ""
+      ],
+      "EUR de mas": [
+        "600.00",
+        "8.00 EUR (=3600.00 CUP)",
+        "Todo el vuelto en CUP",
+        ""
+      ],
+      "USD con CUP de mas": [
+        "500.00",
+        "10.00 USD (=4000.00 CUP) + 1500.00 CUP (efectivo)",
+        "Todo el vuelto en CUP",
+        "1500"
+      ],
+      "USD con CUP efectivo": [
+        "0.00",
+        "10.00 USD (=4000.00 CUP) + 1000.00 CUP (efectivo)",
+        "",
+        "1000"
+      ],
+      "USD con CUP transferencia": [
+        "0.00",
+        "10.00 USD (=4000.00 CUP) + 1000.00 CUP (transferencia)",
+        "",
+        ""
+      ],
+      "USD con los dos CUP": [
+        "200.00",
+        "8.00 USD (=3200.00 CUP) + 1000.00 CUP (efectivo) + 1000.00 CUP (transferencia)",
+        "Todo el vuelto en CUP",
+        "1000"
+      ],
+      "USD de mas": [
+        "1000.00",
+        "15.00 USD (=6000.00 CUP)",
+        "Todo el vuelto en CUP",
+        ""
+      ],
+      "USD justo": [
+        "0.00",
+        "10.00 USD (=4000.00 CUP)",
+        "",
+        ""
+      ],
+      "USD no alcanza sin CUP": [
+        "0.00",
+        "10.00 USD (=4000.00 CUP) + 1000.00 CUP (efectivo)",
+        "",
+        "1000.00"
+      ],
+      "USD sin divisa solo CUP": [
+        "0.00",
+        "500.00 CUP (efectivo)",
+        "",
+        "500"
+      ],
+      "USD vuelto repartido": [
+        "2.00 USD + 200.00 CUP",
+        "15.00 USD (=6000.00 CUP)",
+        "Resto en CUP: 200.00",
+        ""
+      ],
+      "USD vuelto todo en divisa": [
+        "2.50 USD",
+        "15.00 USD (=6000.00 CUP)",
+        "Todo el vuelto en moneda de pago",
+        ""
+      ]
+    }
+  },
+  "generado_el": "2026-09-10T05:34:25",
+  "python": "3.14.6",
+  "registro_de_venta": {
+    "finalizar": {
+      "CUP de mas": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "Efectivo",
+        "moneda_pago": "CUP",
+        "monto_efectivo_cup": 1000.0,
+        "monto_transferencia_cup": 0.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 0.0,
+        "pago_texto": "Efectivo: 1200.00 CUP",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 0.0,
+        "tasa_cambio": 1.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "200.00 CUP"
+      },
+      "CUP justo": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "Efectivo",
+        "moneda_pago": "CUP",
+        "monto_efectivo_cup": 1000.0,
+        "monto_transferencia_cup": 0.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 0.0,
+        "pago_texto": "Efectivo: 1000.00 CUP",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 0.0,
+        "tasa_cambio": 1.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "0.00 CUP"
+      },
+      "CUP mixto": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "Mixto",
+        "moneda_pago": "CUP",
+        "monto_efectivo_cup": 100.0,
+        "monto_transferencia_cup": 900.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 0.0,
+        "pago_texto": "Efectivo: 200.00 CUP + Transferencia: 900.00 CUP",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 0.0,
+        "tasa_cambio": 1.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "100.00 CUP"
+      },
+      "CUP mixto vuelto alto": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "Mixto",
+        "moneda_pago": "CUP",
+        "monto_efectivo_cup": 0.0,
+        "monto_transferencia_cup": 1000.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 0.0,
+        "pago_texto": "Efectivo: 50.00 CUP + Transferencia: 1200.00 CUP",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 0.0,
+        "tasa_cambio": 1.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "250.00 CUP"
+      },
+      "Deuda": {
+        "es_deuda": 1,
+        "es_mensajeria": 0,
+        "fecha_pago": null,
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "",
+        "moneda_pago": "CUP",
+        "monto_efectivo_cup": 0.0,
+        "monto_transferencia_cup": 0.0,
+        "observaciones": "prueba",
+        "pagada": 0,
+        "pago_divisa": 0.0,
+        "pago_texto": "Deuda registrada",
+        "saldo_pendiente": 1000.0,
+        "salida_efectivo_extra": 0.0,
+        "tasa_cambio": 1.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "0.00 CUP"
+      },
+      "Pastilla transferencia": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Transferencia",
+        "metodo_pago_real": "Transferencia",
+        "moneda_pago": "CUP",
+        "monto_efectivo_cup": 0.0,
+        "monto_transferencia_cup": 1000.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 0.0,
+        "pago_texto": "Transferencia: 1000.00 CUP",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 0.0,
+        "tasa_cambio": 1.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "0.00 CUP"
+      },
+      "USD con CUP": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "Mixto",
+        "moneda_pago": "USD",
+        "monto_efectivo_cup": 500.0,
+        "monto_transferencia_cup": 0.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 5.0,
+        "pago_texto": "5.00 USD + 600.00 CUP (efectivo)",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 0.0,
+        "tasa_cambio": 100.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "100.00 CUP"
+      },
+      "USD de mas": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "Efectivo",
+        "moneda_pago": "USD",
+        "monto_efectivo_cup": 0.0,
+        "monto_transferencia_cup": 0.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 5.0,
+        "pago_texto": "5.00 USD",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 1000.0,
+        "tasa_cambio": 400.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "1000.00 CUP"
+      },
+      "USD justo": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "Efectivo",
+        "moneda_pago": "USD",
+        "monto_efectivo_cup": 0.0,
+        "monto_transferencia_cup": 0.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 5.0,
+        "pago_texto": "5.00 USD",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 0.0,
+        "tasa_cambio": 200.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 0.0,
+        "vuelto_texto": "0.00 CUP"
+      },
+      "USD vuelto en divisa": {
+        "es_deuda": 0,
+        "es_mensajeria": 0,
+        "fecha_pago": "2026-09-10 05:34:24",
+        "metodo_pago": "Efectivo",
+        "metodo_pago_real": "Efectivo",
+        "moneda_pago": "USD",
+        "monto_efectivo_cup": 0.0,
+        "monto_transferencia_cup": 0.0,
+        "observaciones": "",
+        "pagada": 1,
+        "pago_divisa": 5.0,
+        "pago_texto": "5.00 USD",
+        "saldo_pendiente": 0.0,
+        "salida_efectivo_extra": 600.0,
+        "tasa_cambio": 400.0,
+        "total_cup": 1000.0,
+        "utilidad_total": 500.0,
+        "vuelto_moneda": 1.0,
+        "vuelto_texto": "1.00 USD + 600.00 CUP"
+      }
+    }
+  },
+  "ttkbootstrap": "2.2.2"
+}
