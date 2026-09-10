@@ -19,11 +19,13 @@ python -m PyInstaller --noconfirm --onefile --windowed ^
     --collect-all uvicorn ^
     --exclude-module pandas --exclude-module matplotlib ^
     --exclude-module ttkbootstrap --exclude-module tkinter ^
+    --exclude-module herramientas ^
     escritorio.py
 ```
 
 El resultado queda en `dist\MiTienda.exe`. Cópialo a la carpeta donde estén
-`tienda.db` y `config_caja.json`: el programa los busca **junto al ejecutable**
+`tienda.db`, `config_caja.json` y `licencia.lic`: el programa los busca
+**junto al ejecutable**
 (ver `obtener_ruta_base()` en `lddl/rutas.py`). La interfaz viaja dentro del
 `.exe` y se descomprime en una carpeta temporal; la base de datos no, y así
 debe seguir siendo, o cada actualización del programa se llevaría por delante
@@ -73,6 +75,36 @@ las deudas no cambiaron al mudarse a React; para no perder esa red, antes de
 borrar el código se hizo repasar a la ventana esos mismos casos una última
 vez y se grabó lo que contestó en `pruebas/acta_de_la_app_vieja.json`. Las
 pruebas comparan hoy contra ese acta en vez de abrir una ventana de verdad.
+
+## Licencia
+
+Desde el 2026-09-10 el programa comprueba una licencia al arrancar. Vencida,
+**bloquea todo lo que escribe** -cobrar, inventario, movimientos de caja- pero
+deja consultar el historial, las deudas y el almacén. Los datos del negocio
+son del negocio: quitárselos es lo que empuja a un cliente molesto a buscarse
+una copia parcheada en vez de pagar.
+
+El candado está en la API, en `guardian_de_licencia()`, no en la pantalla. Es
+la misma decisión que con los permisos y por el mismo motivo: quien sepa la
+dirección puede llamar a la ruta desde la consola del navegador. Las 19 rutas
+que escriben llevan `exige_licencia()` y contestan 402.
+
+Cada licencia va atada a una computadora, por el `MachineGuid` de Windows y el
+número de serie del disco del sistema. **Si le reinstalan Windows al cliente,
+hay que emitirle una nueva.**
+
+Cómo se emite y qué pasa con la llave privada: en la skill
+`desplegar-mitienda`. De la compilación sólo importan dos cosas:
+
+- `herramientas/` está en `excludes` del `.spec`. Es lo que firma licencias:
+  dentro del `.exe` de un cliente, cualquiera podría fabricarse las suyas.
+- **No hay dependencias nuevas ni megabytes de más.** La verificación Ed25519
+  está escrita en Python puro en `lddl/ed25519.py`, unas ochenta líneas del
+  RFC 8032, comprobadas contra sus vectores oficiales en
+  `pruebas/test_ed25519.py`. Tarda unos 10 ms, una vez por arranque.
+
+En desarrollo, esta carpeta tiene su propio `licencia.lic` de diez años, que
+está en `.gitignore` y no viaja a ninguna parte.
 
 ## Usuarios y permisos
 

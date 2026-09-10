@@ -51,6 +51,7 @@ python -m PyInstaller --noconfirm --onefile --windowed ^
     --collect-all uvicorn ^
     --exclude-module pandas --exclude-module matplotlib ^
     --exclude-module ttkbootstrap --exclude-module tkinter ^
+    --exclude-module herramientas ^
     escritorio.py
 ```
 
@@ -108,14 +109,52 @@ Levanta la aplicación contra una **copia** en el temporal. Nunca toca
 
 ## Entregar a un negocio
 
-La tienda no se lleva la carpeta del proyecto: se lleva **tres archivos**.
+La tienda no se lleva la carpeta del proyecto: se lleva **cuatro archivos**.
 
 ```
 MiTienda-Tienda\
     MiTienda.exe        el programa entero
     tienda.db           la base
     config_caja.json    los fondos de caja
+    licencia.lic        la licencia de ESE negocio, en ESA computadora
 ```
+
+### La licencia
+
+Desde el 2026-09-10 el programa no vende sin licencia en regla. El
+`licencia.lic` **no se puede preparar de antemano**: va firmado contra el
+código de la computadora del cliente, así que se emite después de instalar.
+
+```
+1. Copia los otros tres archivos y abre MiTienda allí.
+2. La pantalla de licencia enseña un código: QPX6-73TB-QQY4. Cópialo.
+3. En TU computadora, no en la suya:
+
+   python herramientas/generar_licencia.py "Nombre del negocio" CODIGO --meses 12
+
+4. Mándale el licencia.lic y que lo ponga al lado del .exe. O que lo arrastre
+   a la propia pantalla de licencia, que hace lo mismo.
+```
+
+Si no da tiempo en el momento, el programa se da **siete días de cortesía**
+desde el primer arranque: se puede dejar instalado y mandar la licencia
+después.
+
+Para renovar, los pasos 2 a 4 otra vez. El cliente no pierde nada: sus ventas,
+su inventario y sus deudas siguen en `tienda.db`, que no se toca.
+
+Vencida la licencia, el programa **bloquea lo que escribe** -cobrar,
+inventario, movimientos de caja- pero deja consultar el historial, las deudas
+y el almacén. Los datos del negocio son del negocio.
+
+**La llave privada vive en `!Salva\llaves\` y no sale de ahí.** Si se pierde,
+ningún cliente puede renovar nunca más. Si se filtra, cualquiera emite
+licencias y no hay forma de revocarlas sin recompilar y reinstalar a todos.
+No la lleves en una USB a casa de un cliente: las licencias de técnico
+(`--dias 3 --tecnico`) también se generan desde aquí y se mandan por WhatsApp.
+
+**Si le reinstalan Windows al cliente**, el código de máquina cambia y hay que
+emitirle una licencia nueva. Va a pasar.
 
 **Nunca copiar LDDL a una tienda**: `.git/config` lleva el token de GitHub en
 texto plano, y además les entregaría el código fuente completo.
@@ -172,6 +211,9 @@ Cámbialo ahí y ajusta `--name` e `--icon` al compilar.
 | `lddl/usuarios.py` | usuarios, roles, permisos, PIN cifrado |
 | `lddl/esquema.py` | crea y migra tablas; `preparar_base()` al arrancar |
 | `interfaz/src/` | React |
+| `lddl/licencia.py` | reglas de la licencia; `ed25519.py` verifica la firma |
+| `lddl/estado_licencia.py` | el veredicto del arranque y el candado de la API |
+| `herramientas/` | emite licencias. **Nunca se compila en el .exe** |
 | `pruebas/acta_de_la_app_vieja.json` | testimonio de la ventana de tkinter que hubo antes de React |
 
 ## Detalles que se olvidan

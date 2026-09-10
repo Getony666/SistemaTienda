@@ -101,7 +101,7 @@ compila.
 ```
 MiTienda-Licencia-v1
 negocio: Bodega La Esquina
-maquina: A7K2-9M4P-XR31
+maquina: A7K2-3M4P-XR7T
 desde: 2026-09-15
 hasta: 2027-09-15
 edicion: completa
@@ -119,7 +119,7 @@ orden fijo y unidos por `\n`:
 
 ```
 negocio: Bodega La Esquina
-maquina: A7K2-9M4P-XR31
+maquina: A7K2-3M4P-XR7T
 desde: 2026-09-15
 hasta: 2027-09-15
 edicion: completa
@@ -151,7 +151,7 @@ nombre con tilde y otro con eñe.
 
 ```
 huella  = sha256(b"MiTienda-v1|" + machine_guid + b"|" + serie_volumen)
-codigo  = base32(huella)[:12]  ->  "A7K29M4PXR31"  ->  "A7K2-9M4P-XR31"
+codigo  = base32(huella)[:12]  ->  "A7K23M4PXR7T"  ->  "A7K2-3M4P-XR7T"
 ```
 
 Base32 estándar (RFC 4648) usa el alfabeto `A-Z2-7`, que ya excluye `0`, `1`,
@@ -217,9 +217,20 @@ El bloqueo por licencia entra por el mismo camino.
   caja, alta de usuarios— la llaman.
 - Los endpoints que **leen** no la llaman: historial, deudas, almacén, corte de
   caja en modo consulta, exportaciones.
-- El manejador de errores de FastAPI traduce `LicenciaVencida` a un código HTTP
-  propio (`402 Payment Required`) que la interfaz reconoce para mostrar el
-  cartel adecuado en lugar de un error genérico.
+- La dependencia `guardian_de_licencia()` traduce `LicenciaVencida` a
+  `402 Payment Required` con el motivo ya redactado en castellano. Va en la
+  dependencia y no en un manejador global de FastAPI para que sea la misma
+  pieza que `exige(...)`, y para que la prueba guardiana pueda comprobar ruta
+  por ruta que está puesta.
+- **402 y no 403.** 403 es «tú no puedes», cosa del usuario que entró; esto es
+  del programa entero, y la diferencia importa cuando la cajera llama.
+
+**Lo que la interfaz NO hace, a propósito.** Con la licencia vencida los
+botones de vender siguen encendidos: al pulsarlos, la API contesta 402 y el
+mensaje sale en el mismo sitio donde ya salen los errores de cobro. Apagarlos
+uno por uno obligaría a pasar la licencia por los cinco paneles, y no compra
+seguridad ninguna -la barrera está en la API-. Si algún día molesta, se hace
+entonces.
 
 Dos ventajas de hacerlo aquí y no en la interfaz: no hay que revisar botón por
 botón, y no se puede saltar el candado desde el navegador, porque la puerta no
@@ -285,8 +296,8 @@ todos los clientes.
 `herramientas/generar_licencia.py`, que **nunca** se compila en el `.exe`:
 
 ```
-python herramientas/generar_licencia.py "Bodega La Esquina" A7K2-9M4P-XR31 --meses 12
-python herramientas/generar_licencia.py "Bodega La Esquina" A7K2-9M4P-XR31 --dias 3 --tecnico
+python herramientas/generar_licencia.py "Bodega La Esquina" A7K2-3M4P-XR7T --meses 12
+python herramientas/generar_licencia.py "Bodega La Esquina" A7K2-3M4P-XR7T --dias 3 --tecnico
 ```
 
 - Lee la llave privada de `!Salva\llaves\mitienda_privada.key`.
@@ -361,6 +372,28 @@ Son unas pocas líneas y evita tener que tocar cada archivo de pruebas.
 **Momento oportuno:** hoy no hay ninguna tienda real funcionando, así que no hay
 que migrar a nadie. Todo cliente futuro nace ya con licencia. Si esto se hiciera
 después de repartir cinco copias, habría que ir una por una.
+
+## Lo que se descubrió al construirlo
+
+**Los códigos de máquina de este documento estaban mal.** Los ejemplos decían
+`A7K2-9M4P-XR31`, y base32 no tiene `0`, `1`, `8` ni `9`. Lo cazó la prueba que
+valida el formato en el generador, no una lectura. Corregidos a
+`A7K2-3M4P-XR7T`.
+
+**`preparar_base()` no sabe crear la base desde cero.** Empieza por
+`PRAGMA table_info(ventas)` y abandona si esa tabla no existe, así que un
+cliente que borre `tienda.db` no se queda con una base nueva: se queda sin
+programa. Es anterior a este trabajo y no se tocó, pero cambia cuál es el
+ataque real contra la marca anti-reloj: nadie borra la base, la sustituye por
+la virgen de la entrega. Es eso lo que prueba
+`pruebas/test_almacen_licencia.py`.
+
+**Las pruebas necesitaban su propia licencia.** Desde que la API comprueba una
+al arrancar, cualquier prueba que la levante se encontraba sin licencia: le
+escribía la marca al registro de Windows de verdad, y la suite habría empezado
+a fallar sola al acabarse los siete días de cortesía. `pruebas/base.py` reparte
+ahora una licencia de pruebas, con llave de mentira y su propia clave de
+registro, igual que ya repartía su propia base.
 
 ## La rutina de venta y de renovación
 
