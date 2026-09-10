@@ -460,6 +460,11 @@ class NingunaRutaQueEscribeSeQuedaSinGuardia(SobreUnaCopia):
         ("POST", "/sesion"),
         ("DELETE", "/sesion"),
         ("POST", "/sesion/primer-admin"),
+        # Poner una licencia no lleva permiso a proposito: con la licencia
+        # vencida, quien este delante de la caja tiene que poder desbloquearla,
+        # sea el dueno o la empleada. Y no hay dano posible: una licencia que
+        # no este firmada por nosotros se rechaza antes de guardarse.
+        ("POST", "/licencia"),
     }
 
     def test_todas_llevan_permiso(self):

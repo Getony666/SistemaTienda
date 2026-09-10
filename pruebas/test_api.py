@@ -169,6 +169,9 @@ RUTAS_QUE_ESCRIBEN = {
     ("PUT", "/usuarios/{usuario_id}/pin"),
     ("DELETE", "/usuarios/{usuario_id}"),
     ("PUT", "/permisos"),
+    # Escribe licencia.lic, no la base. Se apunta igual porque es un POST y
+    # deja algo en disco.
+    ("POST", "/licencia"),
 }
 
 

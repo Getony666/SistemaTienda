@@ -38,6 +38,16 @@ def obtener_ruta_config():
     return os.path.join(obtener_ruta_base(), "config_caja.json")
 
 
+def obtener_ruta_licencia():
+    """El licencia.lic va al lado del .exe, como los otros dos ficheros.
+
+    Pasa por aquí y no por una ruta suelta para que las pruebas y los ensayos
+    hereden gratis el trabajar sobre una copia: `fijar_directorio_base()` ya
+    mueve todo lo demás.
+    """
+    return os.path.join(obtener_ruta_base(), "licencia.lic")
+
+
 def conectar_db():
     return sqlite3.connect(obtener_ruta_db())
 

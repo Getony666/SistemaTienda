@@ -220,6 +220,20 @@ def verificar_y_crear_columnas():
             ''')
             conn.commit()
 
+        # ----------------------------------------------------- licencia
+        # La fecha más alta que el programa ha visto, para que atrasar el
+        # reloj de Windows no estire la licencia. Aquí y en el registro: si
+        # sólo estuviera aquí, bastaría con borrar tienda.db.
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='marcas_licencia'")
+        if not cursor.fetchone():
+            cursor.execute('''
+                CREATE TABLE marcas_licencia (
+                    clave TEXT PRIMARY KEY,
+                    valor TEXT NOT NULL
+                )
+            ''')
+            conn.commit()
+
         # Quién hizo cada cosa. Va en las seis tablas que el historial enseña,
         # para que ninguna linea salga sin nombre.
         for tabla in ("ventas", "historial", "entradas_efectivo", "salidas_efectivo",

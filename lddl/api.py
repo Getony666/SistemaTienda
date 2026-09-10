@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 from . import NOMBRE_APP
 from . import calculo_cobro as cc
 from . import calculo_deuda as cd
-from . import sesion, usuarios
+from . import estado_licencia, sesion, usuarios
 from .esquema import preparar_base
 from .caja import (
     cargar_fondo_por_fecha,
@@ -76,6 +76,9 @@ async def arrancar(_app):
     apuntar a su copia, y crear tablas ahí escribiría en la de verdad.
     """
     preparar_base()
+    # Después de preparar la base, porque la marca contra el reloj atrasado
+    # vive en una tabla que puede que todavía no exista.
+    estado_licencia.comprobar()
     yield
 
 
@@ -106,6 +109,36 @@ def exige(permiso):
     return Depends(guardian)
 
 
+# =========================================================================
+#  LICENCIA
+#
+#  El mismo razonamiento que los permisos, una vuelta más arriba: el candado
+#  va aquí y no en la pantalla, porque quien sepa la dirección puede llamar a
+#  la ruta desde la consola del navegador.
+#
+#  Vencida la licencia se bloquea LO QUE ESCRIBE: cobrar, tocar inventario,
+#  mover dinero. Lo que lee sigue funcionando -historial, deudas, almacén,
+#  exportaciones- porque los datos del negocio son del negocio. Quitarle a un
+#  cliente el acceso a sus propias cuentas es lo que le empuja a buscarse una
+#  copia parcheada en vez de pagar.
+#
+#  402 y no 403: 403 es "tú no puedes", y esto no es cosa del usuario que
+#  entró, sino del programa entero.
+# =========================================================================
+
+def guardian_de_licencia():
+    """La comprobación en sí. Suelta para que las pruebas la reconozcan."""
+    try:
+        estado_licencia.exigir_escritura()
+    except estado_licencia.LicenciaVencida as vencida:
+        raise HTTPException(status_code=402, detail=str(vencida))
+
+
+def exige_licencia():
+    """Dependencia que corta la ruta si no se puede escribir hoy."""
+    return Depends(guardian_de_licencia)
+
+
 def _validar_fecha(fecha):
     if not FECHA.match(fecha):
         raise HTTPException(status_code=422, detail="La fecha debe ser AAAA-MM-DD")
@@ -128,6 +161,39 @@ def salud():
         base = f"error: {e}"
     return {"estado": "ok", "base_de_datos": base,
             "momento": datetime.datetime.now().isoformat(timespec="seconds")}
+
+
+# ------------------------------------------------------------------ licencia
+
+class LicenciaEntrante(BaseModel):
+    texto: str = Field(..., description="Contenido completo del licencia.lic")
+
+
+@app.get("/licencia", tags=["estado"])
+def ver_licencia():
+    """Cómo está la licencia y el código de esta computadora.
+
+    Sin guardián de ninguna clase, y a propósito: es lo que pinta la pantalla
+    de licencia. Si se bloqueara a sí misma, un cliente con la licencia
+    vencida no tendría ni de dónde copiar su código de máquina para pedir la
+    renovación.
+    """
+    return estado_licencia.para_la_pantalla()
+
+
+@app.post("/licencia", tags=["estado"])
+def poner_licencia(entrante: LicenciaEntrante):
+    """Guarda una licencia nueva: la que el cliente pega o suelta en la ventana.
+
+    Se comprueba antes de escribir. Si se guardara primero, una licencia de
+    otra computadora pisaría la buena que hubiera y dejaría al cliente sin
+    poder vender justo por intentar renovar.
+    """
+    bien, veredicto = estado_licencia.activar(entrante.texto)
+    if not bien:
+        raise HTTPException(status_code=400,
+                            detail=estado_licencia.explicar(veredicto))
+    return estado_licencia.para_la_pantalla()
 
 
 # ----------------------------------------------------------------- productos
@@ -304,7 +370,7 @@ class VentaEntrante(BaseModel):
     observaciones: str = ""
 
 
-@app.post("/ventas", tags=["ventas"], status_code=201, dependencies=[exige("vender")])
+@app.post("/ventas", tags=["ventas"], status_code=201, dependencies=[exige("vender"), exige_licencia()])
 def registrar_venta(venta: VentaEntrante):
     """Cierra una venta y la guarda con todos sus efectos en caja e inventario."""
     carrito = [linea.model_dump() for linea in venta.carrito]
@@ -407,7 +473,7 @@ def simular_cobro_deuda(venta_id: int, abono: AbonoEntrante):
     }
 
 
-@app.post("/deudas/{venta_id}/cobros", tags=["ventas"], status_code=201, dependencies=[exige("cobrar_deudas")])
+@app.post("/deudas/{venta_id}/cobros", tags=["ventas"], status_code=201, dependencies=[exige("cobrar_deudas"), exige_licencia()])
 def cobrar_deuda(venta_id: int, abono: AbonoEntrante):
     """Registra el cobro, total o parcial, de una deuda pendiente.
 
@@ -475,19 +541,19 @@ class ProductoEntrante(BaseModel):
     fecha_vencimiento: str | None = None
 
 
-@app.post("/productos", tags=["inventario"], status_code=201, dependencies=[exige("crear_producto")])
+@app.post("/productos", tags=["inventario"], status_code=201, dependencies=[exige("crear_producto"), exige_licencia()])
 def crear_producto(producto: ProductoEntrante):
     """Da de alta un producto."""
     return _resultado(agregar_producto(**producto.model_dump()))
 
 
-@app.put("/productos/{producto_id}", tags=["inventario"], dependencies=[exige("actualizar_producto")])
+@app.put("/productos/{producto_id}", tags=["inventario"], dependencies=[exige("actualizar_producto"), exige_licencia()])
 def editar_producto(producto_id: int, producto: ProductoEntrante):
     """Cambia los datos de un producto. Los cambios quedan en el historial."""
     return _resultado(actualizar_producto(producto_id, **producto.model_dump()))
 
 
-@app.delete("/productos/{producto_id}", tags=["inventario"], dependencies=[exige("eliminar_producto")])
+@app.delete("/productos/{producto_id}", tags=["inventario"], dependencies=[exige("eliminar_producto"), exige_licencia()])
 def borrar_producto(producto_id: int):
     """Elimina un producto. No se puede si ya tiene ventas asociadas."""
     return _resultado(eliminar_producto(producto_id))
@@ -502,7 +568,7 @@ class SalidaEntrante(BaseModel):
     motivo: str = "Salida a trabajador"
 
 
-@app.post("/inventario/salidas", tags=["inventario"], status_code=201, dependencies=[exige("salida_inventario")])
+@app.post("/inventario/salidas", tags=["inventario"], status_code=201, dependencies=[exige("salida_inventario"), exige_licencia()])
 def crear_salida(salida: SalidaEntrante):
     """Saca producto del almacén y genera la deuda correspondiente."""
     return _resultado(registrar_salida(**salida.model_dump()))
@@ -514,7 +580,7 @@ class MermaEntrante(BaseModel):
     motivo: str = "Merma"
 
 
-@app.post("/inventario/mermas", tags=["inventario"], status_code=201, dependencies=[exige("merma")])
+@app.post("/inventario/mermas", tags=["inventario"], status_code=201, dependencies=[exige("merma"), exige_licencia()])
 def crear_merma(merma: MermaEntrante):
     """Da de baja producto perdido o dañado."""
     return _resultado(registrar_merma(**merma.model_dump()))
@@ -536,7 +602,7 @@ class CarritoDeInventario(BaseModel):
     motivo: str = ""
 
 
-@app.post("/inventario/salidas/carrito", tags=["inventario"], status_code=201, dependencies=[exige("salida_inventario")])
+@app.post("/inventario/salidas/carrito", tags=["inventario"], status_code=201, dependencies=[exige("salida_inventario"), exige_licencia()])
 def crear_salida_de_carrito(carrito: CarritoDeInventario):
     """Saca un carrito entero del almacén, a precio de costo.
 
@@ -548,7 +614,7 @@ def crear_salida_de_carrito(carrito: CarritoDeInventario):
         lineas, carrito.motivo or "Salida a trabajador"))
 
 
-@app.post("/inventario/mermas/carrito", tags=["inventario"], status_code=201, dependencies=[exige("merma")])
+@app.post("/inventario/mermas/carrito", tags=["inventario"], status_code=201, dependencies=[exige("merma"), exige_licencia()])
 def crear_merma_de_carrito(carrito: CarritoDeInventario):
     """Da de baja un carrito entero sin cobrar nada.
 
@@ -567,13 +633,13 @@ class MovimientoEfectivo(BaseModel):
     descripcion: str = ""
 
 
-@app.post("/caja/entradas", tags=["caja"], status_code=201, dependencies=[exige("entrada_efectivo")])
+@app.post("/caja/entradas", tags=["caja"], status_code=201, dependencies=[exige("entrada_efectivo"), exige_licencia()])
 def crear_entrada_efectivo(movimiento: MovimientoEfectivo):
     """Mete efectivo en la caja."""
     return _resultado(registrar_entrada_efectivo(**movimiento.model_dump()))
 
 
-@app.post("/caja/salidas", tags=["caja"], status_code=201, dependencies=[exige("salida_efectivo")])
+@app.post("/caja/salidas", tags=["caja"], status_code=201, dependencies=[exige("salida_efectivo"), exige_licencia()])
 def crear_salida_efectivo(movimiento: MovimientoEfectivo):
     """Saca efectivo de la caja. Falla si no hay suficiente."""
     return _resultado(registrar_salida_efectivo(**movimiento.model_dump()))
@@ -583,7 +649,7 @@ class FondoEntrante(BaseModel):
     fondo: float = Field(..., ge=0)
 
 
-@app.put("/caja/fondo/{fecha}", tags=["caja"], dependencies=[exige("fondo_caja")])
+@app.put("/caja/fondo/{fecha}", tags=["caja"], dependencies=[exige("fondo_caja"), exige_licencia()])
 def fijar_fondo(fecha: str, cuerpo: FondoEntrante):
     """Fija el fondo de caja de un día. Sustituye, no suma."""
     _validar_fecha(fecha)
@@ -600,7 +666,7 @@ class CambioEntrante(BaseModel):
     observaciones: str = ""
 
 
-@app.post("/cambio", tags=["caja"], status_code=201, dependencies=[exige("cambio_divisa")])
+@app.post("/cambio", tags=["caja"], status_code=201, dependencies=[exige("cambio_divisa"), exige_licencia()])
 def crear_operacion_cambio(operacion: CambioEntrante):
     """Registra una compra o venta de divisa."""
     return _resultado(registrar_operacion_cambio(**operacion.model_dump()))
@@ -608,7 +674,7 @@ def crear_operacion_cambio(operacion: CambioEntrante):
 
 # -------------------------------------------------------------- historial
 
-@app.delete("/historial/{registro_id}", tags=["historial"], dependencies=[exige("eliminar_historial")])
+@app.delete("/historial/{registro_id}", tags=["historial"], dependencies=[exige("eliminar_historial"), exige_licencia()])
 def revertir_del_historial(
     registro_id: int,
     tipo: str = Query(..., description="Tipo del registro, tal como lo devuelve /ventas"),
@@ -708,26 +774,26 @@ def listar_los_usuarios(incluir_inactivos: bool = Query(False)):
 
 
 @app.post("/usuarios", tags=["usuarios"], status_code=201,
-          dependencies=[exige("gestionar_usuarios")])
+          dependencies=[exige("gestionar_usuarios"), exige_licencia()])
 def crear_el_usuario(nuevo: UsuarioEntrante):
     return _resultado(usuarios.crear_usuario(nuevo.nombre, nuevo.rol, nuevo.pin))
 
 
 @app.put("/usuarios/{usuario_id}/rol", tags=["usuarios"],
-         dependencies=[exige("gestionar_usuarios")])
+         dependencies=[exige("gestionar_usuarios"), exige_licencia()])
 def cambiar_el_rol(usuario_id: int, cambio: RolEntrante):
     return _resultado(usuarios.cambiar_rol(usuario_id, cambio.rol))
 
 
 @app.put("/usuarios/{usuario_id}/pin", tags=["usuarios"],
-         dependencies=[exige("gestionar_usuarios")])
+         dependencies=[exige("gestionar_usuarios"), exige_licencia()])
 def restablecer_el_pin(usuario_id: int, nuevo: PinEntrante):
     """El Admin le pone PIN nuevo a cualquiera, sin necesitar el viejo."""
     return _resultado(usuarios.restablecer_pin(usuario_id, nuevo.pin))
 
 
 @app.delete("/usuarios/{usuario_id}", tags=["usuarios"],
-            dependencies=[exige("gestionar_usuarios")])
+            dependencies=[exige("gestionar_usuarios"), exige_licencia()])
 def desactivar_el_usuario(usuario_id: int):
     """Lo apaga, no lo borra: lo que hizo tiene que seguir teniendo nombre."""
     return _resultado(usuarios.desactivar_usuario(usuario_id))
@@ -743,7 +809,7 @@ def ver_permisos():
     }
 
 
-@app.put("/permisos", tags=["usuarios"], dependencies=[exige("gestionar_usuarios")])
+@app.put("/permisos", tags=["usuarios"], dependencies=[exige("gestionar_usuarios"), exige_licencia()])
 def cambiar_permiso(cambio: PermisoEntrante):
     return _resultado(
         usuarios.fijar_permiso(cambio.rol, cambio.permiso, cambio.concedido))
