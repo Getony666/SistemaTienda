@@ -179,6 +179,18 @@ def verificar_y_crear_columnas():
                 cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN venta_id INTEGER")
                 conn.commit()
 
+        # La categoría no es obligatoria y antes se guardaba vacía sin más.
+        # Los productos de siempre (categoria NULL o en blanco) pasan a
+        # "Otros" para que el filtro del almacén no los deje fuera. Vuelto a
+        # correr no cambia nada: ya no queda ninguno vacío que tocar.
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='productos'")
+        if cursor.fetchone():
+            cursor.execute('''
+                UPDATE productos SET categoria = 'Otros'
+                WHERE categoria IS NULL OR TRIM(categoria) = ''
+            ''')
+            conn.commit()
+
         # ------------------------------------------------------ usuarios
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usuarios'")
         if not cursor.fetchone():

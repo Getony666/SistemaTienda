@@ -3,8 +3,34 @@
 from .historial import registrar_historial
 from .rutas import consulta, quitar_tildes, transaccion
 
+# Doce categorías fijas, "Otros" siempre la última: así queda un cajón donde
+# cae todo lo que no encaja, sin que el menú desplegable se vaya alargando
+# solo. El orden es el que ve quien elige la categoría.
+CATEGORIAS = (
+    "Alimentos", "Bebidas", "Confituras", "Cárnicos y embutidos", "Lácteos",
+    "Conservas", "Panadería y dulcería", "Aseo personal", "Limpieza del hogar",
+    "Cigarros y tabaco", "Misceláneas", "Otros",
+)
+
+
+def normalizar_categoria(categoria):
+    """La categoría no es obligatoria: lo que no sea una de las doce válidas
+    -vacía, None, inventada- se guarda como "Otros". La usan tanto el alta
+    como la actualización, para que un producto nunca quede con una categoría
+    que el desplegable ni siquiera ofrece."""
+    categoria = (categoria or "").strip()
+    return categoria if categoria in CATEGORIAS else "Otros"
+
 
 def agregar_producto(nombre, categoria, precio_compra, precio_venta, stock, proveedor, tipo_producto="unidad", unidad_medida="unidad", fecha_vencimiento=""):
+    categoria = normalizar_categoria(categoria)
+    precio_compra = 0.0 if precio_compra is None else precio_compra
+    precio_venta = 0.0 if precio_venta is None else precio_venta
+    stock = 0.0 if stock is None else stock
+    proveedor = "" if proveedor is None else proveedor
+    tipo_producto = "unidad" if tipo_producto is None else tipo_producto
+    unidad_medida = "unidad" if unidad_medida is None else unidad_medida
+    fecha_vencimiento = "" if fecha_vencimiento is None else fecha_vencimiento
     try:
         with transaccion() as (_conexion, cursor):
             cursor.execute('''
@@ -22,11 +48,43 @@ def agregar_producto(nombre, categoria, precio_compra, precio_venta, stock, prov
     return True, "Producto agregado exitosamente"
 
 
-def actualizar_producto(id, nombre, categoria, precio_compra, precio_venta, stock, proveedor, tipo_producto, unidad_medida, fecha_vencimiento):
+def actualizar_producto(id, nombre, categoria=None, precio_compra=None, precio_venta=None,
+                         stock=None, proveedor=None, tipo_producto=None, unidad_medida=None,
+                         fecha_vencimiento=None):
+    """Cambia los datos de un producto.
+
+    Un campo que llega como None significa "no cambiar": se conserva lo que
+    ya había en la base. Hace falta porque alguna pantalla no conoce cierto
+    campo -hoy el proveedor- y lo manda vacío sin querer, y eso no puede
+    borrar lo que ya estaba guardado. El 0 de precio_compra, precio_venta y
+    stock SÍ es un valor real: por eso se compara con `is None`, nunca con
+    "si no hay valor", que confundiría el cero con "no cambiar".
+    """
     try:
         with transaccion() as (_conexion, cursor):
-            cursor.execute("SELECT nombre, precio_compra, precio_venta, stock, proveedor FROM productos WHERE id=?", (id,))
+            cursor.execute('''
+                SELECT nombre, categoria, precio_compra, precio_venta, stock,
+                       proveedor, tipo_producto, unidad_medida, fecha_vencimiento
+                FROM productos WHERE id=?
+            ''', (id,))
             antiguo = cursor.fetchone()
+            # Sin fila que consultar (id inexistente) no hay "valor actual" que
+            # conservar; se usa un relleno neutro y de todos modos la UPDATE de
+            # abajo no va a tocar ninguna fila.
+            base = antiguo or (nombre, "", 0.0, 0.0, 0.0, "", "unidad", "unidad", "")
+            (nombre_antes, categoria_antes, precio_compra_antes, precio_venta_antes,
+             stock_antes, proveedor_antes, tipo_antes, unidad_antes, fecha_antes) = base
+
+            nombre = nombre_antes if nombre is None else nombre
+            categoria = normalizar_categoria(categoria_antes if categoria is None else categoria)
+            precio_compra = precio_compra_antes if precio_compra is None else precio_compra
+            precio_venta = precio_venta_antes if precio_venta is None else precio_venta
+            stock = stock_antes if stock is None else stock
+            proveedor = proveedor_antes if proveedor is None else proveedor
+            tipo_producto = tipo_antes if tipo_producto is None else tipo_producto
+            unidad_medida = unidad_antes if unidad_medida is None else unidad_medida
+            fecha_vencimiento = fecha_antes if fecha_vencimiento is None else fecha_vencimiento
+
             cursor.execute('''
                 UPDATE productos
                 SET nombre=?, categoria=?, precio_compra=?, precio_venta=?, stock=?, proveedor=?, tipo_producto=?, unidad_medida=?, fecha_vencimiento=?
@@ -37,16 +95,16 @@ def actualizar_producto(id, nombre, categoria, precio_compra, precio_venta, stoc
 
     if antiguo:
         cambios = []
-        if antiguo[0] != nombre:
-            cambios.append(f"nombre: {antiguo[0]} -> {nombre}")
-        if antiguo[1] != float(precio_compra):
-            cambios.append(f"precio_compra: {antiguo[1]} -> {precio_compra}")
-        if antiguo[2] != float(precio_venta):
-            cambios.append(f"precio_venta: {antiguo[2]} -> {precio_venta}")
-        if antiguo[3] != float(stock):
-            cambios.append(f"stock: {antiguo[3]} -> {stock}")
-        if antiguo[4] != proveedor:
-            cambios.append(f"proveedor: {antiguo[4]} -> {proveedor}")
+        if nombre_antes != nombre:
+            cambios.append(f"nombre: {nombre_antes} -> {nombre}")
+        if precio_compra_antes != float(precio_compra):
+            cambios.append(f"precio_compra: {precio_compra_antes} -> {precio_compra}")
+        if precio_venta_antes != float(precio_venta):
+            cambios.append(f"precio_venta: {precio_venta_antes} -> {precio_venta}")
+        if stock_antes != float(stock):
+            cambios.append(f"stock: {stock_antes} -> {stock}")
+        if proveedor_antes != proveedor:
+            cambios.append(f"proveedor: {proveedor_antes} -> {proveedor}")
         desc = f"Producto ID {id}: " + "; ".join(cambios) if cambios else "Sin cambios"
         registrar_historial("Actualización de Producto", desc, {"id": id, "cambios": cambios})
     return True, "Producto actualizado exitosamente"
