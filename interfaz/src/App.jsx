@@ -3,6 +3,7 @@ import "./estilos.css";
 import { api, enviar } from "./api";
 import Entrar from "./Entrar";
 import PanelVentas from "./PanelVentas";
+import PanelAlmacen from "./PanelAlmacen";
 import PanelHistorial from "./PanelHistorial";
 import PanelCambio from "./PanelCambio";
 import PanelCorte from "./PanelCorte";
@@ -13,6 +14,7 @@ import PanelUsuarios from "./PanelUsuarios";
 // 403 aunque alguien llame a la ruta por su cuenta.
 const PANELES = [
   { id: "ventas", icono: "🛒", texto: "Ventas" },
+  { id: "almacen", icono: "📦", texto: "Almacén", permiso: "ver_almacen" },
   { id: "historial", icono: "🕒", texto: "Historial", permiso: "ver_historial" },
   { id: "cambio", icono: "💱", texto: "Cambio de Divisa", permiso: "cambio_divisa" },
   { id: "corte", icono: "🧮", texto: "Corte de Caja", permiso: "ver_corte" },
@@ -97,6 +99,9 @@ export default function App() {
       {actual === "ventas" && (
         <PanelVentas productos={productos} recargarProductos={recargarProductos}
                      puede={puede} />
+      )}
+      {actual === "almacen" && (
+        <PanelAlmacen puede={puede} recargarProductosGlobal={recargarProductos} />
       )}
       {actual === "historial" && <PanelHistorial puede={puede} />}
       {actual === "cambio" && <PanelCambio />}

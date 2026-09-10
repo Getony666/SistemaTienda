@@ -35,11 +35,20 @@ const FILAS = [
     total: (r) => r.total_ventas_dia },
 ];
 
+const vacioEfectivo = { moneda: "CUP", monto: "", descripcion: "" };
+
 export default function PanelCorte({ puede }) {
   const [fecha, setFecha] = useState(hoy());
   const [resumen, setResumen] = useState(null);
   const [fondo, setFondo] = useState("");
   const [aviso, setAviso] = useState(null);
+
+  // Entrada y Salida de Efectivo viven aquí: son movimientos de caja, y el
+  // corte es lo primero que cambia cuando se registra uno.
+  const [abiertoEfectivo, setAbiertoEfectivo] = useState(null);
+  const [camposEfectivo, setCamposEfectivo] = useState(vacioEfectivo);
+  const [avisoEfectivo, setAvisoEfectivo] = useState(null);
+  const [guardandoEfectivo, setGuardandoEfectivo] = useState(false);
 
   const cargar = useCallback(async (f) => {
     setAviso(null);
@@ -63,6 +72,37 @@ export default function PanelCorte({ puede }) {
       cargar(fecha);
     } catch (e) {
       setAviso({ tipo: "error", texto: e.message });
+    }
+  }
+
+  const abrirEfectivo = (tipo) => {
+    setAbiertoEfectivo((actual) => (actual === tipo ? null : tipo));
+    setCamposEfectivo(vacioEfectivo);
+    setAvisoEfectivo(null);
+  };
+
+  const setCampoEfectivo = (campo) => (e) =>
+    setCamposEfectivo((c) => ({ ...c, [campo]: e.target.value }));
+
+  // El movimiento cambia el total esperado en caja: tras guardar hay que
+  // recargar el resumen del día, no basta con cerrar el formulario.
+  async function guardarEfectivo() {
+    setGuardandoEfectivo(true);
+    setAvisoEfectivo(null);
+    try {
+      const ruta = abiertoEfectivo === "entrada" ? "/caja/entradas" : "/caja/salidas";
+      const r = await enviar(ruta, {
+        moneda: camposEfectivo.moneda,
+        monto: Number(camposEfectivo.monto) || 0,
+        descripcion: camposEfectivo.descripcion,
+      });
+      setAvisoEfectivo({ tipo: "bien", texto: r?.mensaje ?? "Hecho" });
+      setCamposEfectivo(vacioEfectivo);
+      cargar(fecha);
+    } catch (e) {
+      setAvisoEfectivo({ tipo: "error", texto: e.message });
+    } finally {
+      setGuardandoEfectivo(false);
     }
   }
 
@@ -99,6 +139,56 @@ export default function PanelCorte({ puede }) {
         <p className="nota-form">
           El fondo sustituye al que hubiera para esa fecha, no se suma.
         </p>
+      </section>
+      )}
+
+      {/* Sin ninguno de los dos permisos, la tarjeta entera no se muestra:
+          no hay nada que hacer aquí, y menos aún que ver. */}
+      {(puede("entrada_efectivo") || puede("salida_efectivo")) && (
+      <section className="tarjeta">
+        <div className="cabecera-tarjeta">
+          <h2>Movimientos de efectivo</h2>
+          <div className="fila">
+            {puede("entrada_efectivo") && (
+              <button className={`boton verde ${abiertoEfectivo === "entrada" ? "activo" : ""}`}
+                      onClick={() => abrirEfectivo("entrada")}>
+                Entrada de Efectivo
+              </button>
+            )}
+            {puede("salida_efectivo") && (
+              <button className={`boton rojo ${abiertoEfectivo === "salida" ? "activo" : ""}`}
+                      onClick={() => abrirEfectivo("salida")}>
+                Salida de Efectivo
+              </button>
+            )}
+          </div>
+        </div>
+
+        {abiertoEfectivo && (
+          <div className="formulario verde-tenue">
+            <div className="campos">
+              <label className="campo"><span>Moneda</span>
+                <select value={camposEfectivo.moneda} onChange={setCampoEfectivo("moneda")}>
+                  <option>CUP</option><option>USD</option><option>EUR</option>
+                </select></label>
+              <label className="campo"><span>Monto</span>
+                <input className="numero" value={camposEfectivo.monto}
+                       onChange={setCampoEfectivo("monto")} /></label>
+              <label className="campo ancho"><span>Descripción</span>
+                <input value={camposEfectivo.descripcion}
+                       onChange={setCampoEfectivo("descripcion")} /></label>
+            </div>
+
+            {avisoEfectivo && <div className={`aviso ${avisoEfectivo.tipo}`}>{avisoEfectivo.texto}</div>}
+
+            <div className="fila" style={{ marginTop: 12 }}>
+              <button className="boton verde" onClick={guardarEfectivo} disabled={guardandoEfectivo}>
+                {guardandoEfectivo ? "Guardando…" : "Guardar"}
+              </button>
+              <button className="boton fantasma" onClick={() => setAbiertoEfectivo(null)}>Cancelar</button>
+            </div>
+          </div>
+        )}
       </section>
       )}
 

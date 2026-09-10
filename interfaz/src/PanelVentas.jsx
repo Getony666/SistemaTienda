@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dinero, cantidad as fmtCantidad, enviar } from "./api";
-import PanelAcciones from "./PanelAcciones";
 
 // Los billetes que se ven en la calle. Sirven para armar el vuelto en divisa
 // sin teclear: la cajera va sumando los que tiene a mano.
@@ -270,7 +269,7 @@ export default function PanelVentas({ productos, recargarProductos, puede }) {
     (!esVenta || deuda || (vuelto?.cubre && !vuelto?.error));
 
   return (
-    <div className="cuerpo">
+    <div className="cuerpo ventas">
       <div className="columna">
         <section className="tarjeta">
           <h2>Buscar productos</h2>
@@ -323,40 +322,42 @@ export default function PanelVentas({ productos, recargarProductos, puede }) {
           </div>
         </section>
 
-        <section className="tarjeta">
+        <section className="tarjeta carrito">
           <h2>Carrito de compras</h2>
-          {carrito.length === 0 ? (
-            <p className="vacio">El carrito está vacío</p>
-          ) : (
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Producto</th><th className="centro">Cantidad</th>
-                  <th className="derecha">Precio</th><th className="derecha">Subtotal</th><th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {carrito.map((l) => (
-                  <tr key={l.id}>
-                    <td>{l.nombre}</td>
-                    <td className="centro">
-                      <input className="numero" style={{ width: 74 }} type="number"
-                             min="0" step={l.tipo === "peso" ? "0.1" : "1"}
-                             value={l.cantidad}
-                             onChange={(e) => cambiarCantidad(l.id, e.target.value)} />
-                    </td>
-                    <td className="derecha">
-                      {modo === "merma" ? "—" : dinero(precioDe(l))}
-                    </td>
-                    <td className="derecha">{dinero(l.cantidad * precioDe(l))}</td>
-                    <td className="derecha">
-                      <button className="quitar" title="Quitar" onClick={() => quitar(l.id)}>✕</button>
-                    </td>
+          <div className="carrito-filas">
+            {carrito.length === 0 ? (
+              <p className="vacio">El carrito está vacío</p>
+            ) : (
+              <table className="tabla">
+                <thead>
+                  <tr>
+                    <th>Producto</th><th className="centro">Cantidad</th>
+                    <th className="derecha">Precio</th><th className="derecha">Subtotal</th><th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {carrito.map((l) => (
+                    <tr key={l.id}>
+                      <td>{l.nombre}</td>
+                      <td className="centro">
+                        <input className="numero" style={{ width: 74 }} type="number"
+                               min="0" step={l.tipo === "peso" ? "0.1" : "1"}
+                               value={l.cantidad}
+                               onChange={(e) => cambiarCantidad(l.id, e.target.value)} />
+                      </td>
+                      <td className="derecha">
+                        {modo === "merma" ? "—" : dinero(precioDe(l))}
+                      </td>
+                      <td className="derecha">{dinero(l.cantidad * precioDe(l))}</td>
+                      <td className="derecha">
+                        <button className="quitar" title="Quitar" onClick={() => quitar(l.id)}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
           <div className="total">
             {reglas.apunte && <span className="apunte">{reglas.apunte}</span>}
             <span className="etiqueta">TOTAL</span>
@@ -364,10 +365,13 @@ export default function PanelVentas({ productos, recargarProductos, puede }) {
             <span className="moneda">CUP</span>
           </div>
         </section>
+      </div>
 
-        <section className="tarjeta">
+      <div className="columna">
+        <section className="tarjeta pago">
           <h2>Pago</h2>
 
+          <div className="pago-cuerpo">
           <div className="pastillas">
             <button className="pastilla" aria-pressed={soloTransferencia} disabled={!esVenta}
                     onClick={() => marcarPago(() => setSoloTransferencia((v) => !v))}>
@@ -526,6 +530,7 @@ export default function PanelVentas({ productos, recargarProductos, puede }) {
           )}
 
           {aviso && <div className={`aviso ${aviso.tipo}`} style={{ marginTop: 12 }}>{aviso.texto}</div>}
+          </div>
 
           <div className="finales">
             <button className="boton verde" disabled={!puedeConfirmar} onClick={confirmar}>
@@ -536,11 +541,6 @@ export default function PanelVentas({ productos, recargarProductos, puede }) {
             </button>
           </div>
         </section>
-      </div>
-
-      <div className="columna">
-        <PanelAcciones productos={productos} alCambiar={recargarProductos}
-                       puede={puede} />
       </div>
     </div>
   );

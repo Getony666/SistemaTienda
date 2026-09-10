@@ -173,6 +173,16 @@ input.numero { font-variant-numeric: tabular-nums; text-align: right; }
 .derecha { text-align: right; font-variant-numeric: tabular-nums; }
 .centro { text-align: center; }
 
+/* La tabla del almacén va centrada, cabecera y dato en el mismo eje.
+   Con nueve columnas estrechas, el título a la izquierda y la cifra a la
+   derecha quedaban en extremos opuestos de la misma casilla y costaba ver
+   a qué columna pertenecía cada número. Gana a `.tabla th` y a `.derecha`
+   por especificidad, así que no hay que tocar el marcado casilla a casilla.
+   Los números conservan `tabular-nums` de `.derecha`: centrados, pero
+   alineados entre sí. */
+.tabla.almacen th,
+.tabla.almacen td { text-align: center; }
+
 .desplazable { max-height: 190px; overflow: auto; margin: 0 -4px; padding: 0 4px; }
 
 .vacio { color: var(--tenue); font-style: italic; padding: 22px 4px; text-align: center; }
@@ -582,4 +592,138 @@ tr.apagado td { opacity: .5; }
   font-size: 11.5px; color: var(--tenue); font-style: italic; margin-right: auto;
 }
 .total .etiqueta { margin-left: auto; }
+
+/* ============================================================
+   Ventas en dos columnas de verdad: el alto lo reparten las
+   columnas, no el contenido, para cerrar una venta sin scroll.
+   ============================================================ */
+
+.cuerpo.ventas { overflow: hidden; align-content: stretch; }
+.cuerpo.ventas .columna { height: 100%; min-height: 0; }
+
+/* El carrito crece con lo que sobra bajo "Buscar productos"; el total
+   queda pegado al fondo de su propia tarjeta, no al fondo de la página. */
+.tarjeta.carrito {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.tarjeta.carrito .carrito-filas {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.tarjeta.carrito .total { flex-shrink: 0; }
+
+/* Pago mide lo que mide su contenido: "Finalizar venta" y "Cancelar" van
+   pegados debajo del último campo de cobro, no al fondo de la columna.
+   `flex: 0 1 auto` es la clave -no crece, pero sí encoge-: cuando el modo
+   de pago despliega más campos de los que caben, la tarjeta se queda en el
+   alto de la columna y es `.pago-cuerpo` quien se desplaza, así que los dos
+   botones siguen a la vista sin bajar la página. */
+.tarjeta.pago {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.tarjeta.pago .pago-cuerpo {
+  flex: 0 1 auto;
+  overflow: auto;
+  min-height: 0;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.tarjeta.pago .finales { flex-shrink: 0; }
+
+/* ============================================================
+   Almacén: filtros, resumen y tabla de productos.
+   ============================================================ */
+
+/* Control segmentado (Orden): dos mitades pegadas dentro de un borde. */
+.segmentado {
+  display: inline-flex;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  overflow: hidden;
+}
+.segmentado button {
+  font: inherit;
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 8px 14px;
+  border: 0;
+  background: rgba(255, 255, 255, .7);
+  color: var(--suave);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transicion), color var(--transicion);
+}
+.segmentado button + button { border-left: 1px solid var(--borde); }
+.segmentado button.activo { background: var(--verde); color: #fff; }
+
+/* Las tres cifras del resumen, bajo una línea fina como en el total. */
+.resumen-almacen {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--borde);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.resumen-almacen .bloque { display: flex; flex-direction: column; gap: 3px; }
+.resumen-almacen .etiqueta {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--suave);
+}
+.resumen-almacen .cifra {
+  font-size: 22px; font-weight: 700; color: var(--verde-oscuro);
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+.resumen-almacen .cifra.rojo { color: var(--rojo); }
+
+/* Título a la izquierda, botones de acción a la derecha, en la misma fila. */
+.cabecera-tarjeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.cabecera-tarjeta > h2 {
+  margin: 0;
+  font-size: 11px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--suave);
+}
+
+.margen { color: var(--verde-claro); font-weight: 600; }
+.sin-existencia { color: var(--rojo); font-weight: 600; }
+
+/* La barra de vendidos: ancho fijo, la que más vendió la llena entera. */
+/* Es una fila flexible, así que `text-align: center` de la tabla no la
+   mueve: hay que centrarla por su propio eje. */
+.vendidos-celda { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.barra-vendidos {
+  display: inline-block;
+  width: 70px; height: 7px;
+  border-radius: 4px;
+  background: rgba(31, 90, 76, .09);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.barra-vendidos > span {
+  display: block; height: 100%;
+  background: var(--verde-claro);
+  border-radius: 4px;
+}
+
+/* --- formulario de movimientos de efectivo, en Corte de Caja --- */
+.formulario.verde-tenue {
+  background: rgba(46, 158, 107, .08);
+  border-color: rgba(46, 158, 107, .25);
+}
 

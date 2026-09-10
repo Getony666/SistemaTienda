@@ -116,6 +116,11 @@ class LosPermisosPorDefecto(SobreUnaCopia):
         for necesario in ("vender", "cobrar_deudas", "merma", "salida_inventario"):
             self.assertIn(necesario, permisos)
 
+    def test_ver_almacen_es_de_admin_y_boss_pero_no_del_empleado(self):
+        self.assertIn("ver_almacen", usuarios.permisos_de(usuarios.ADMIN))
+        self.assertIn("ver_almacen", usuarios.permisos_de(usuarios.BOSS))
+        self.assertNotIn("ver_almacen", usuarios.permisos_de(usuarios.EMPLEADO))
+
 
 class CambiarLosPermisos(SobreUnaCopia):
 
@@ -155,6 +160,28 @@ class CambiarLosPermisos(SobreUnaCopia):
 
     def test_un_permiso_inventado_se_rechaza(self):
         self.assertFalse(usuarios.fijar_permiso(usuarios.EMPLEADO, "volar", True)[0])
+
+
+class MigrarUnPermisoNuevoAUnaBaseVieja(SobreUnaCopia):
+    """`ver_almacen` es nuevo: una base que ya tenía la tabla `permisos_rol`
+    poblada con las claves de antes tiene que recibirlo igual, sin que
+    `sembrar_permisos_si_hace_falta` se salte todo por no estar vacía."""
+
+    def test_llega_con_su_valor_por_defecto_a_una_base_que_no_lo_tenia(self):
+        con = sqlite3.connect(os.path.join(self.temporal, "tienda.db"))
+        con.execute("DELETE FROM permisos_rol WHERE permiso = 'ver_almacen'")
+        con.commit()
+        con.close()
+
+        usuarios.sembrar_permisos_si_hace_falta()
+
+        self.assertIn("ver_almacen", usuarios.permisos_de(usuarios.BOSS))
+        self.assertNotIn("ver_almacen", usuarios.permisos_de(usuarios.EMPLEADO))
+
+    def test_no_pisa_lo_que_el_admin_ya_habia_cambiado(self):
+        usuarios.fijar_permiso(usuarios.EMPLEADO, "ver_almacen", True)
+        usuarios.sembrar_permisos_si_hace_falta()
+        self.assertIn("ver_almacen", usuarios.permisos_de(usuarios.EMPLEADO))
 
 
 class NoQuedarseSinAdmin(SobreUnaCopia):
@@ -375,6 +402,23 @@ class LaApiEsLaQueImpide(SobreUnaCopia):
         """La caja tiene que poder buscar productos aunque no haya nadie dentro."""
         self.assertEqual(self.cliente.get("/productos").status_code, 200)
         self.assertEqual(self.cliente.get("/salud").status_code, 200)
+
+    def test_el_empleado_no_ve_el_almacen(self):
+        self.crear("Ana", usuarios.ADMIN)
+        self.crear("Luis", usuarios.EMPLEADO, "1111")
+        sesion.entrar("Luis", "1111")
+        self.assertEqual(self.cliente.get("/almacen").status_code, 403)
+
+    def test_admin_y_boss_si_ven_el_almacen(self):
+        self.crear("Ana", usuarios.ADMIN, "1234")
+        self.crear("Jefe", usuarios.BOSS, "2222")
+
+        sesion.entrar("Ana", "1234")
+        self.assertEqual(self.cliente.get("/almacen").status_code, 200)
+        sesion.salir()
+
+        sesion.entrar("Jefe", "2222")
+        self.assertEqual(self.cliente.get("/almacen").status_code, 200)
 
     def test_el_primer_admin_solo_se_crea_una_vez(self):
         r = self.cliente.post("/sesion/primer-admin",

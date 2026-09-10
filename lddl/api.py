@@ -56,6 +56,7 @@ from .inventario import (
     registrar_salida,
     registrar_salida_de_carrito,
 )
+from .almacen import obtener_almacen
 from .productos import actualizar_producto, agregar_producto, buscar_productos, eliminar_producto
 from .ventas_datos import (
     obtener_ventas,
@@ -149,6 +150,23 @@ def listar_productos(buscar: str = Query("", description="Texto a buscar; vacío
                  unidad=p[5], costo=p[6])
         for p in buscar_productos(buscar)
     ]
+
+
+@app.get("/almacen", tags=["inventario"], dependencies=[exige("ver_almacen")])
+def ver_almacen(
+    buscar: str = Query("", description="Subcadena del nombre; vacío no filtra"),
+    proveedor: str = Query("", description="Proveedor exacto; vacío no filtra"),
+    categoria: str = Query("", description="Categoría exacta; vacía no filtra"),
+    orden: str = Query("nombre", description="'nombre' o 'vendidos'"),
+    dias: int = Query(30, description="Período de 'vendidos': 30, 90 o 0 (todo)"),
+):
+    """Catálogo completo con costo, margen y unidades vendidas por producto.
+
+    Es de sólo lectura pero lleva su propio permiso -a diferencia de
+    /productos, que usa la caja para buscar- porque enseña el precio de
+    compra y el valor del inventario: eso no es para cualquiera."""
+    return obtener_almacen(buscar=buscar, proveedor=proveedor, categoria=categoria,
+                           orden=orden, dias=dias)
 
 
 # -------------------------------------------------------------------- ventas
@@ -437,15 +455,24 @@ def cobrar_deuda(venta_id: int, abono: AbonoEntrante):
 # ---------------------------------------------------------------- productos
 
 class ProductoEntrante(BaseModel):
+    """Lo que manda la pantalla para dar de alta o editar un producto.
+
+    Salvo el nombre, todos los campos son opcionales y por defecto llegan en
+    None. Al crear, None se rellena con un valor neutro (ver `agregar_producto`).
+    Al actualizar, None significa "no cambiar" y conserva lo que ya había en
+    la base (ver `actualizar_producto`) -así una pantalla que no conoce cierto
+    campo no lo pisa con vacío sólo por no mandarlo.
+    """
+
     nombre: str
-    categoria: str = ""
-    precio_compra: float = Field(0.0, ge=0)
-    precio_venta: float = Field(0.0, ge=0)
-    stock: float = Field(0.0, ge=0)
-    proveedor: str = ""
-    tipo_producto: str = "unidad"
-    unidad_medida: str = "unidad"
-    fecha_vencimiento: str = ""
+    categoria: str | None = None
+    precio_compra: float | None = Field(None, ge=0)
+    precio_venta: float | None = Field(None, ge=0)
+    stock: float | None = Field(None, ge=0)
+    proveedor: str | None = None
+    tipo_producto: str | None = None
+    unidad_medida: str | None = None
+    fecha_vencimiento: str | None = None
 
 
 @app.post("/productos", tags=["inventario"], status_code=201, dependencies=[exige("crear_producto")])

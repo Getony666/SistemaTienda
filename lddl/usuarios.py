@@ -40,6 +40,7 @@ PERMISOS = (
     ("actualizar_producto", "Actualizar productos"),
     ("eliminar_producto", "Eliminar productos"),
     ("eliminar_historial", "Eliminar del historial"),
+    ("ver_almacen", "Ver el almacén"),
     ("gestionar_usuarios", "Gestionar usuarios y permisos"),
 )
 
@@ -256,14 +257,24 @@ def _admins_activos():
 # ------------------------------------------------------------------- arranque
 
 def sembrar_permisos_si_hace_falta():
-    """Deja en la tabla los permisos de arranque, sin pisar los ya cambiados."""
+    """Deja en la tabla los permisos de arranque, sin pisar los ya cambiados.
+
+    En una tienda nueva la tabla está vacía y aquí se siembra todo. En una
+    que ya venía de antes, sólo hacen falta las claves que todavía no existen
+    para ningún rol -así un permiso añadido en una versión nueva del programa
+    (como ver_almacen) llega también a las bases existentes, con su valor por
+    defecto, sin tocar los permisos que el Admin ya haya cambiado a mano.
+    """
     with transaccion() as (_conexion, cursor):
         cursor.execute("SELECT COUNT(*) FROM permisos_rol")
-        if cursor.fetchone()[0]:
-            return False
+        vacia = cursor.fetchone()[0] == 0
+        cursor.execute("SELECT rol, permiso FROM permisos_rol")
+        existentes = set(cursor.fetchall())
         for rol in ROLES:
             for clave in CLAVES:
+                if (rol, clave) in existentes:
+                    continue
                 cursor.execute(
                     "INSERT INTO permisos_rol (rol, permiso, concedido) VALUES (?, ?, ?)",
                     (rol, clave, 1 if clave in POR_DEFECTO[rol] else 0))
-    return True
+    return vacia
