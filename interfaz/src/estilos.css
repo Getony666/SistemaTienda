@@ -73,8 +73,15 @@ body {
 
 /* -------------------------------------------------------------- tarjetas */
 
+/* El alto se reparte en vez de descontarse a mano: encima del cuerpo hay la
+   barra, y a veces también la banda de la licencia, que aparece y desaparece.
+   Con el 56px fijo de antes, el día que sale la banda el final de la pantalla
+   se quedaba por debajo del borde. */
+#root { display: flex; flex-direction: column; }
+
 .cuerpo {
-  height: calc(100% - 56px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 14px;
   display: grid;
@@ -727,3 +734,130 @@ tr.apagado td { opacity: .5; }
   border-color: rgba(46, 158, 107, .25);
 }
 
+
+/* -------------------------------------------------------------- licencia */
+
+/* La banda del aviso. Una sola, cambiando de color segun lo que quede: ocre
+   a treinta dias, roja a siete o ya vencida, verde durante la cortesia.
+   Con la licencia al dia no sale nada: avisar cada manana de algo que falta
+   un ano es la forma mas rapida de que dejen de leerla. */
+.banda-licencia {
+  display: flex; align-items: center; gap: 10px;
+  flex: none;
+  padding: 9px 16px;
+  font-size: 13px; font-weight: 600; color: #fff;
+}
+.banda-licencia.ocre  { background: var(--ocre); }
+.banda-licencia.roja  { background: var(--rojo); }
+.banda-licencia.verde { background: var(--verde-claro); }
+
+.banda-licencia .punto {
+  flex: none; width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255, 255, 255, .85);
+}
+.banda-licencia .enlace {
+  margin-left: auto;
+  font: inherit; font-weight: 600; color: inherit;
+  background: transparent; border: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+  opacity: .92; padding: 2px 2px;
+}
+.banda-licencia .enlace:hover { opacity: 1; }
+
+.cuerpo-licencia {
+  flex: 1 1 auto; min-height: 0; overflow: auto;
+  padding: 28px 14px; display: flex; justify-content: center;
+}
+
+.panel-licencia {
+  width: 100%; max-width: 520px;
+  align-self: flex-start;
+}
+.puerta .panel-licencia { align-self: center; }
+
+.panel-licencia .titulo-licencia {
+  margin: 0 0 6px;
+  font-size: 20px; font-weight: 700; letter-spacing: -.01em;
+}
+.panel-licencia .explica-licencia {
+  margin: 0 0 22px; color: var(--suave); line-height: 1.55;
+}
+
+/* EL CODIGO. Lo unico grande de toda la pantalla: es el dato que se dicta
+   por telefono o se pega en WhatsApp, y todo lo demas esta para acompanarlo.
+   Los grupos de cuatro y el espaciado son para poder leerlo en voz alta. */
+.placa {
+  background: linear-gradient(180deg, #24685A, var(--verde-oscuro));
+  border-radius: var(--radio);
+  padding: 18px 20px 20px;
+  margin-bottom: 20px;
+}
+.placa .rotulo { color: rgba(207, 232, 223, .8); font-size: 12px; margin-bottom: 10px; }
+.placa .fila-codigo { display: flex; align-items: flex-end; gap: 14px; }
+.placa .codigo {
+  color: #fff;
+  font-size: 34px; font-weight: 700; letter-spacing: .10em;
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+  white-space: nowrap; user-select: all;
+}
+.placa .copiar {
+  margin-left: auto; flex: none;
+  font: inherit; font-weight: 600; font-size: 13px;
+  color: var(--verde-oscuro); background: #fff;
+  border: 0; padding: 9px 15px; border-radius: var(--radio-chico);
+  cursor: pointer; transition: background var(--transicion);
+}
+.placa .copiar:hover { background: #EAF3EF; }
+
+.panel-licencia .paso {
+  display: flex; gap: 11px; margin-bottom: 13px; line-height: 1.5;
+}
+.panel-licencia .marca-paso {
+  flex: none; width: 21px; height: 21px; border-radius: 50%; margin-top: 1px;
+  background: rgba(46, 125, 107, .14); color: var(--verde-oscuro);
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.panel-licencia .paso .texto { color: var(--suave); }
+.panel-licencia .paso .texto b { color: var(--texto); font-weight: 600; }
+
+.soltar {
+  margin-top: 20px; cursor: pointer;
+  border: 1.5px dashed rgba(31, 90, 76, .30); border-radius: var(--radio);
+  padding: 22px 16px; text-align: center;
+  background: rgba(255, 255, 255, .42);
+  transition: border-color var(--transicion), background var(--transicion);
+}
+.soltar:hover, .soltar.encima {
+  border-color: var(--verde); background: rgba(46, 125, 107, .07);
+}
+.soltar .principal { font-weight: 600; margin-bottom: 3px; }
+.soltar .secundario { color: var(--suave); font-size: 13px; }
+.soltar .secundario u { text-underline-offset: 3px; }
+
+/* El motivo concreto, no "licencia no valida": "esta licencia es de otra
+   computadora" ahorra una llamada de soporte que lo generico no ahorra. */
+.bloqueo {
+  border-left: 3px solid var(--rojo);
+  background: rgba(196, 67, 46, .07);
+  border-radius: 0 var(--radio-chico) var(--radio-chico) 0;
+  padding: 13px 15px; margin-bottom: 20px; line-height: 1.55;
+}
+.bloqueo .fuerte { font-weight: 600; display: block; margin-bottom: 3px; }
+.bloqueo .resto { color: var(--suave); }
+
+.datos-licencia {
+  margin: 0;
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 9px 18px; align-items: baseline;
+}
+.datos-licencia dt { color: var(--suave); font-size: 13px; }
+.datos-licencia dd { margin: 0; font-weight: 600; }
+.datos-licencia .restantes { color: var(--suave); font-weight: 400; }
+
+.pastilla-licencia {
+  display: inline-block; padding: 3px 9px;
+  border-radius: 999px; font-size: 12px; font-weight: 600;
+}
+.pastilla-licencia.activa  { background: rgba(46, 158, 107, .16); color: #1C6E4C; }
+.pastilla-licencia.tecnico { background: rgba(123, 79, 163, .14); color: #6A3F94; }

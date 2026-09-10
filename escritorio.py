@@ -67,6 +67,26 @@ def esperar_a_que_responda(url, segundos=20):
     return False
 
 
+def titulo_de_la_ventana(por_defecto):
+    """El nombre del negocio en el título, si la licencia lo dice.
+
+    "MiTienda - Bodega La Esquina" en vez de sólo "MiTienda". Personaliza el
+    producto, que se vende como plantilla, y de paso le recuerda al dueño de
+    quién es la licencia cada vez que abre.
+
+    La licencia ya está comprobada a estas alturas -lo hace la API al
+    arrancar-, así que esto sólo lee lo que quedó decidido. Si algo falla,
+    el título de siempre: un problema aquí no puede impedir que la ventana
+    se abra.
+    """
+    try:
+        from lddl import NOMBRE_APP, estado_licencia
+        negocio = (estado_licencia.actual().negocio or "").strip()
+        return f"{NOMBRE_APP} - {negocio}" if negocio else por_defecto
+    except Exception:  # noqa: BLE001
+        return por_defecto
+
+
 def main():
     if not os.path.isdir(DIST):
         sys.exit("Falta interfaz/dist.\n"
@@ -92,7 +112,7 @@ def main():
     if not esperar_a_que_responda(direccion + "salud"):
         sys.exit("La API no arrancó a tiempo.")
 
-    webview.create_window(TITULO_VENTANA, direccion,
+    webview.create_window(titulo_de_la_ventana(TITULO_VENTANA), direccion,
                           width=1360, height=860, min_size=(1024, 700))
     webview.start()
 

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import "./estilos.css";
 import { api, enviar } from "./api";
 import Entrar from "./Entrar";
+import BandaLicencia from "./BandaLicencia";
+import PanelLicencia from "./PanelLicencia";
 import PanelVentas from "./PanelVentas";
 import PanelAlmacen from "./PanelAlmacen";
 import PanelHistorial from "./PanelHistorial";
@@ -21,8 +23,15 @@ const PANELES = [
   { id: "usuarios", icono: "🔑", texto: "Usuarios", permiso: "gestionar_usuarios" },
 ];
 
+// Con estos dos el programa no da para nada, así que la pantalla de licencia
+// sale ANTES de preguntar quién va a usar la caja: no tiene sentido pedir un
+// PIN si la caja no va a abrir, y en una tienda recién estrenada puede que
+// todavía no haya ni usuarios que nombrar.
+const CERRADO = ["sin_licencia", "reloj_atrasado"];
+
 export default function App() {
   const [acceso, setAcceso] = useState(null);   // null mientras se pregunta
+  const [licencia, setLicencia] = useState(null);
   const [panel, setPanel] = useState("ventas");
   const [productos, setProductos] = useState([]);
 
@@ -42,12 +51,28 @@ export default function App() {
     }
   }, []);
 
+  const preguntarLicencia = useCallback(async () => {
+    try {
+      setLicencia(await api("/licencia"));
+    } catch {
+      // Si la propia comprobación falla, se deja pasar. Un fallo nuestro no
+      // puede dejar a una tienda sin poder cobrar: el candado de verdad está
+      // en la API, y ésa contestará 402 si de verdad hay que parar.
+      setLicencia({ estado: "activa", puede_escribir: true, maquina: "" });
+    }
+  }, []);
+
   useEffect(() => { preguntarQuienSoy(); }, [preguntarQuienSoy]);
+  useEffect(() => { preguntarLicencia(); }, [preguntarLicencia]);
   useEffect(() => { if (acceso?.sesion) recargarProductos(); },
             [acceso?.sesion, recargarProductos]);
 
-  if (acceso === null) {
+  if (acceso === null || licencia === null) {
     return <div className="puerta"><p className="vacio">Abriendo…</p></div>;
+  }
+
+  if (CERRADO.includes(licencia.estado)) {
+    return <PanelLicencia licencia={licencia} alCambiar={setLicencia} pantallaCompleta />;
   }
 
   if (!acceso.sesion) {
@@ -63,8 +88,10 @@ export default function App() {
   const visibles = PANELES.filter((p) => !p.permiso || puede(p.permiso));
 
   // Si a alguien le quitan un permiso mientras está dentro, la pestaña donde
-  // estaba desaparece: se le devuelve a Ventas en vez de dejar el hueco.
-  const actual = visibles.some((p) => p.id === panel) ? panel : "ventas";
+  // estaba desaparece: se le devuelve a Ventas en vez de dejar el hueco. La
+  // licencia no está en la barra pero es un destino válido.
+  const actual = panel === "licencia" || visibles.some((p) => p.id === panel)
+    ? panel : "ventas";
 
   async function salir() {
     try {
@@ -91,10 +118,17 @@ export default function App() {
           <b>{acceso.sesion.nombre}</b>
           <span className="rol">{acceso.sesion.rol}</span>
         </span>
+        <button className="salir" onClick={() => setPanel("licencia")}
+                aria-current={actual === "licencia" ? "page" : undefined}
+                title="Ver o cambiar la licencia de este programa">
+          Licencia
+        </button>
         <button className="salir" onClick={salir} title="Que entre otra persona">
           Cambiar de usuario
         </button>
       </nav>
+
+      <BandaLicencia licencia={licencia} alPulsar={() => setPanel("licencia")} />
 
       {actual === "ventas" && (
         <PanelVentas productos={productos} recargarProductos={recargarProductos}
@@ -108,6 +142,9 @@ export default function App() {
       {actual === "corte" && <PanelCorte puede={puede} />}
       {actual === "usuarios" && (
         <PanelUsuarios alCambiarPermisos={preguntarQuienSoy} />
+      )}
+      {actual === "licencia" && (
+        <PanelLicencia licencia={licencia} alCambiar={setLicencia} />
       )}
     </>
   );
