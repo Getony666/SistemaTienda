@@ -3,13 +3,13 @@
 No hay aquí una tabla de casos que mover a `pruebas/casos.py`: estas pruebas
 no comparaban números fijos, sino que la ventana, al pulsar "Agregar al
 Carrito" con un producto real de `tienda_de_pruebas.db`, hiciera exactamente
-lo mismo que hoy hace `lddl/carrito.py`. Esa comprobación se hizo mientras
-`lddl/ui/` seguía en el proyecto; el producto que se usó y lo que la ventana
+lo mismo que hoy hace `mitienda/carrito.py`. Esa comprobación se hizo mientras
+`mitienda/ui/` seguía en el proyecto; el producto que se usó y lo que la ventana
 contestó para él quedaron grabados en `pruebas/acta_de_la_app_vieja.json`
 justo antes de retirarla (`pruebas/test_carrito_en_la_app.py` en el acta).
 
 `ElActaDeLaVentanaViejaLoConfirma` ya no abre ninguna ventana: reconstruye,
-con las funciones puras de `lddl/carrito.py`, lo que la pantalla hacía con
+con las funciones puras de `mitienda/carrito.py`, lo que la pantalla hacía con
 ese mismo producto, y compara contra lo que quedó grabado. Donde el
 comportamiento no vivía en el módulo -que al marcar la pastilla de
 "Transferencia" lo pagado se ajuste solo al total, o que un carrito vacío
@@ -27,7 +27,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from lddl import carrito as c  # noqa: E402
+from mitienda import carrito as c  # noqa: E402
 
 _AQUI = os.path.dirname(os.path.abspath(__file__))
 _RUTA_ACTA = os.path.join(_AQUI, "acta_de_la_app_vieja.json")
@@ -46,7 +46,7 @@ def _agregar(carrito):
 
 
 class ElActaDeLaVentanaViejaLoConfirma(unittest.TestCase):
-    """Compara `lddl/carrito.py` contra lo que la ventana real hacía.
+    """Compara `mitienda/carrito.py` contra lo que la ventana real hacía.
 
     El producto usado (`_PRODUCTO`) es el mismo que la ventana encontró en
     `tienda_de_pruebas.db` al levantar el acta: el primero con stock de la

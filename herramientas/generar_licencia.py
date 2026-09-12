@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from herramientas.firma import firmar  # noqa: E402
 from herramientas.generar_llaves import RUTA_PRIVADA, leer_llave  # noqa: E402
-from lddl import NOMBRE_APP, licencia  # noqa: E402
+from mitienda import NOMBRE_APP, licencia  # noqa: E402
 
 # El alfabeto de base32, que es de donde sale el codigo de maquina. No tiene
 # 0, 1, 8 ni 9, asi que un codigo con esas cifras esta mal copiado seguro.

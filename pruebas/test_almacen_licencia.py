@@ -1,7 +1,7 @@
 """Dónde vive la licencia y cómo se recuerda qué día fue el último.
 
 Dos trabajos, los dos con efectos secundarios y por eso separados de las
-reglas puras de `lddl/licencia.py`:
+reglas puras de `mitienda/licencia.py`:
 
 1. Leer y escribir `licencia.lic`, al lado del .exe.
 2. La marca de agua contra el reloj atrasado. Se guarda por triplicado -en la
@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import base  # noqa: E402
-from lddl import almacen_licencia, rutas  # noqa: E402
+from mitienda import almacen_licencia, rutas  # noqa: E402
 
 CLAVE_DE_PRUEBAS = r"Software\MiTienda-pruebas"
 
@@ -68,7 +68,7 @@ class SobreUnaCopia(unittest.TestCase):
         """
         import sqlite3
         shutil.copy2(base.BASE, rutas.obtener_ruta_db())
-        from lddl.esquema import preparar_base
+        from mitienda.esquema import preparar_base
         preparar_base()
         con = sqlite3.connect(rutas.obtener_ruta_db())
         try:

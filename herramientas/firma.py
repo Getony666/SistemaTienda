@@ -1,4 +1,4 @@
-"""Firmar con Ed25519. La otra mitad de lddl/ed25519.py.
+"""Firmar con Ed25519. La otra mitad de mitienda/ed25519.py.
 
 La aritmética de la curva se importa de allí en vez de repetirla, para que
 firmador y verificador no puedan separarse nunca: cualquier arreglo en la
@@ -13,7 +13,7 @@ reproduce sus firmas oficiales octeto a octeto.
 
 import hashlib
 
-from lddl.ed25519 import (
+from mitienda.ed25519 import (
     GENERADOR, L, P, _inverso, _point_mul, sha512_mod_l,
 )
 

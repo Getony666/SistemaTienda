@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lddl.calculo_cobro import (  # noqa: E402
+from mitienda.calculo_cobro import (  # noqa: E402
     Pago,
     a_numero,
     calcular_vuelto,

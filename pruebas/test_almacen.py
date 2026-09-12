@@ -16,10 +16,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import base  # noqa: E402
-from lddl import rutas  # noqa: E402
-from lddl.almacen import obtener_almacen  # noqa: E402
-from lddl.inventario import registrar_merma  # noqa: E402
-from lddl.productos import CATEGORIAS, agregar_producto  # noqa: E402
+from mitienda import rutas  # noqa: E402
+from mitienda.almacen import obtener_almacen  # noqa: E402
+from mitienda.inventario import registrar_merma  # noqa: E402
+from mitienda.productos import CATEGORIAS, agregar_producto  # noqa: E402
 
 
 class SobreUnaCopia(unittest.TestCase):

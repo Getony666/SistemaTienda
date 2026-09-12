@@ -21,7 +21,7 @@ sys.path.insert(0, AQUI)
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 
-from lddl import rutas  # noqa: E402
+from mitienda import rutas  # noqa: E402
 
 ORIGEN = os.path.join(AQUI, "pruebas", "tienda_de_pruebas.db")
 CONFIG = os.path.join(AQUI, "pruebas", "config_de_pruebas.json")
@@ -50,7 +50,7 @@ if virgen:
 import uvicorn  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
-from lddl.api import app  # noqa: E402
+from mitienda.api import app  # noqa: E402
 
 app.mount("/", StaticFiles(directory=os.path.join(AQUI, "interfaz", "dist"),
                            html=True), name="interfaz")

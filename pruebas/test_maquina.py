@@ -14,8 +14,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lddl import maquina  # noqa: E402
-from lddl.licencia import normalizar_maquina  # noqa: E402
+from mitienda import maquina  # noqa: E402
+from mitienda.licencia import normalizar_maquina  # noqa: E402
 
 GUID = "4c4c4544-0037-3810-8043-b1c04f435331"
 SERIE = 3735928559

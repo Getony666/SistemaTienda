@@ -2,11 +2,11 @@
 que el viejo.
 
 `test_equivalencia_con_la_app.py` y `test_registro_de_venta.py` protegen el
-cálculo puro (`lddl/calculo_cobro.py`) conduciendo... nada: ya no hay ventana
+cálculo puro (`mitienda/calculo_cobro.py`) conduciendo... nada: ya no hay ventana
 de tkinter que conducir, así que comparan contra el acta que dejó grabada
 antes de irse. Eso deja cubierto el módulo, pero la pantalla que se entrega
 hoy -React, en `interfaz/src/PanelVentas.jsx` y `DialogoDeuda.jsx`- no llama
-al módulo: llama a la API por HTTP. Nada obliga a que `lddl/api.py` traduzca
+al módulo: llama a la API por HTTP. Nada obliga a que `mitienda/api.py` traduzca
 bien esas llamadas; este archivo lo comprueba.
 
 Hace pasar las MISMAS tablas de `pruebas/casos.py` -CASOS/REFERENCIA y
@@ -61,9 +61,9 @@ from casos import (  # noqa: E402
 try:
     from fastapi.testclient import TestClient
 
-    from lddl import calculo_cobro as cc
-    from lddl.api import app
-    from lddl.rutas import consulta
+    from mitienda import calculo_cobro as cc
+    from mitienda.api import app
+    from mitienda.rutas import consulta
     HAY_API = True
 except Exception:  # sin fastapi instalado
     HAY_API = False
@@ -86,8 +86,8 @@ def tearDownModule():
 def _cuerpo_de_pago(pago):
     """El JSON que manda React para cobrar o cerrar una venta.
 
-    Los campos del dataclass `Pago` (`lddl/calculo_cobro.py`) son uno a uno
-    los de `PagoEntrante` (`lddl/api.py`) y los que arma `datosDelPago()` en
+    Los campos del dataclass `Pago` (`mitienda/calculo_cobro.py`) son uno a uno
+    los de `PagoEntrante` (`mitienda/api.py`) y los que arma `datosDelPago()` en
     `PanelVentas.jsx`: no hace falta traducir nada, sólo volcarlo.
     """
     return dataclasses.asdict(pago)
@@ -219,7 +219,7 @@ class BaseConSesionDeAdmin(unittest.TestCase):
         if cls is BaseConSesionDeAdmin:
             raise unittest.SkipTest("clase base, sin pruebas propias")
 
-        from lddl import rutas, sesion, usuarios
+        from mitienda import rutas, sesion, usuarios
 
         cls._rutas = rutas
         cls._sesion = sesion
@@ -490,7 +490,7 @@ class SalidaYMermaDeCarritoPorLaApi(BaseConSesionDeAdmin):
         self.assertAlmostEqual(self._stock_de(311), arroz_antes - 1)
 
         # El precio de costo lo pone el almacén, no quien llama (ver
-        # `_leer_lineas` en lddl/inventario.py): en la base de pruebas, el
+        # `_leer_lineas` en mitienda/inventario.py): en la base de pruebas, el
         # precio_compra de ambos productos es 100.0.
         total_esperado = 2 * 100.0 + 1 * 100.0
         with consulta() as (_conexion, cursor):

@@ -1,7 +1,7 @@
 """Las tablas de casos que caracterizan el cobro, el carrito y el registro
 de venta: los números y textos que la ventana vieja de tkinter (`ventas.py`,
-`lddl/ui/`) daba antes de que esas cuentas se sacaran a `lddl/calculo_cobro.py`
-y `lddl/carrito.py`. No se inventaron a mano: se tomaron ejecutando esa
+`mitienda/ui/`) daba antes de que esas cuentas se sacaran a `mitienda/calculo_cobro.py`
+y `mitienda/carrito.py`. No se inventaron a mano: se tomaron ejecutando esa
 ventana, y la constancia de que coinciden con ella vive en
 `pruebas/acta_de_la_app_vieja.json`.
 
@@ -13,7 +13,7 @@ API cuando le llegue el turno, sin tener que volver a escribirlas.
     python -m unittest discover -s pruebas -v
 """
 
-from lddl.calculo_cobro import Pago, a_numero, cup_faltante
+from mitienda.calculo_cobro import Pago, a_numero, cup_faltante
 
 # ---------------------------------------------------------------------
 # Vuelto y cobro (antes en test_equivalencia_con_la_app.py)

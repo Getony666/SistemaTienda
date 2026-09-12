@@ -35,7 +35,7 @@ def _vendidos_por_producto(cursor, umbral):
     - Una venta cancelada (`cancelada = 1`) nunca llegó a salir de verdad del
       almacén.
     - La Merma no hace falta excluirla aquí: no toca ventas ni detalles_venta
-      en absoluto, sólo salidas_inventario (ver `lddl/inventario.py`), así que
+      en absoluto, sólo salidas_inventario (ver `mitienda/inventario.py`), así que
       ya queda fuera de esta suma sin tener que filtrarla.
     """
     sentencia = '''

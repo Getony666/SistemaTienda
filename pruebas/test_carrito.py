@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lddl import carrito as c  # noqa: E402
+from mitienda import carrito as c  # noqa: E402
 
 ACEITE = dict(producto_id=3, nombre="Aceite 1000 ml", precio=200.0,
               tipo="unidad", unidad="unidad")

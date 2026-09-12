@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import base  # noqa: E402
 from herramientas.firma import llave_publica_de  # noqa: E402
 from herramientas.generar_licencia import emitir  # noqa: E402
-from lddl import almacen_licencia, estado_licencia, licencia, rutas  # noqa: E402
+from mitienda import almacen_licencia, estado_licencia, licencia, rutas  # noqa: E402
 
 PRIVADA = bytes(range(32))
 PUBLICA = llave_publica_de(PRIVADA)

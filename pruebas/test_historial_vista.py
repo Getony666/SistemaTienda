@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import base  # noqa: E402
-from lddl import rutas  # noqa: E402
+from mitienda import rutas  # noqa: E402
 
 
 class SobreUnaCopia(unittest.TestCase):
@@ -126,14 +126,14 @@ class ElSignoDelDinero(SobreUnaCopia):
     """Lo que entra y lo que sale no puede verse igual."""
 
     def test_una_venta_entra(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         venta = self.vender(id_p)
         self.assertEqual(self.por_id(obtener_ventas(), venta, "Venta")["signo"], "entra")
 
     def test_una_salida_de_caja_sale(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         self.mover_caja("salidas_efectivo", 12500, "Pago al proveedor")
         registros = [r for r in obtener_ventas() if r["tipo"] == "Salida de efectivo"]
@@ -141,7 +141,7 @@ class ElSignoDelDinero(SobreUnaCopia):
         self.assertEqual(registros[0]["signo"], "sale")
 
     def test_una_entrada_de_caja_entra(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         self.mover_caja("entradas_efectivo", 5000, "Fondo del día")
         registros = [r for r in obtener_ventas() if r["tipo"] == "Entrada de efectivo"]
@@ -150,14 +150,14 @@ class ElSignoDelDinero(SobreUnaCopia):
 
     def test_una_deuda_no_mueve_dinero_todavia(self):
         """Lo fiado ni entró ni salió: está pendiente."""
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         deuda = self.fiar(id_p)
         self.assertEqual(self.por_id(obtener_ventas(), deuda, "Deuda")["signo"], "neutro")
 
     def test_comprar_divisa_la_mete_y_venderla_la_saca(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         compra = self.cambiar_divisa("compra")
         venta = self.cambiar_divisa("venta")
@@ -166,8 +166,8 @@ class ElSignoDelDinero(SobreUnaCopia):
         self.assertEqual(self.por_id(registros, venta)["signo"], "sale")
 
     def test_una_merma_sale(self):
-        from lddl.inventario import registrar_merma_de_carrito
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.inventario import registrar_merma_de_carrito
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         self.assertTrue(registrar_merma_de_carrito([{"producto_id": id_p, "cantidad": 1}])[0])
@@ -179,7 +179,7 @@ class ElSignoDelDinero(SobreUnaCopia):
 class LasDeudas(SobreUnaCopia):
 
     def test_dice_cuanto_lleva_abonado(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         deuda = self.fiar(id_p, total=1000, abonos=(200, 300))
@@ -190,7 +190,7 @@ class LasDeudas(SobreUnaCopia):
 
     def test_el_concepto_es_el_cliente_y_no_los_productos(self):
         """Lo que se busca de una deuda es de quién es."""
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         deuda = self.fiar(id_p, cliente="Yordanis el de la esquina")
@@ -205,7 +205,7 @@ class LasDeudas(SobreUnaCopia):
         pasa a ser un registro de pagos; encabezar la fila con él dejaba una
         línea ilegible de trescientos caracteres.
         """
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, nombre = self.un_producto()
         deuda = self.fiar(
@@ -217,7 +217,7 @@ class LasDeudas(SobreUnaCopia):
         self.assertEqual(registro["concepto"], nombre, "se cae a los productos")
 
     def test_sin_abonos_lo_dice(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         deuda = self.fiar(id_p)
@@ -228,8 +228,8 @@ class ElFiltroDeMetodo(SobreUnaCopia):
     """Antes dejaba pasar lo que no se cobró de ninguna manera."""
 
     def test_transferencia_no_arrastra_mermas_ni_cambios(self):
-        from lddl.inventario import registrar_merma_de_carrito
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.inventario import registrar_merma_de_carrito
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         self.vender(id_p, metodo_real="Transferencia")
@@ -245,7 +245,7 @@ class ElFiltroDeMetodo(SobreUnaCopia):
 
     def test_efectivo_si_trae_los_movimientos_de_caja(self):
         """Una salida de caja es efectivo, y con ese filtro tiene que salir."""
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         self.mover_caja("salidas_efectivo", 500, "Compra de bolsas")
         self.cambiar_divisa()
@@ -254,8 +254,8 @@ class ElFiltroDeMetodo(SobreUnaCopia):
         self.assertIn("Cambio de Divisa", tipos)
 
     def test_sin_filtro_sigue_saliendo_todo(self):
-        from lddl.inventario import registrar_merma_de_carrito
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.inventario import registrar_merma_de_carrito
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         registrar_merma_de_carrito([{"producto_id": id_p, "cantidad": 1}])
@@ -265,7 +265,7 @@ class ElFiltroDeMetodo(SobreUnaCopia):
 class ElRecorte(SobreUnaCopia):
 
     def test_limite_devuelve_los_mas_recientes(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         for _ in range(5):
@@ -276,7 +276,7 @@ class ElRecorte(SobreUnaCopia):
         self.assertEqual([r["id"] for r in primeros], [r["id"] for r in todos[:2]])
 
     def test_desde_salta_los_ya_vistos(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         for _ in range(5):
@@ -286,7 +286,7 @@ class ElRecorte(SobreUnaCopia):
         self.assertEqual([r["id"] for r in segunda_tanda], [r["id"] for r in todos[2:4]])
 
     def test_sin_limite_sigue_viniendo_todo(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         for _ in range(4):
@@ -297,7 +297,7 @@ class ElRecorte(SobreUnaCopia):
 class LaBusqueda(SobreUnaCopia):
 
     def test_encuentra_al_cliente_de_una_deuda(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         deuda = self.fiar(id_p, cliente="Yordanis el de la esquina")
@@ -306,7 +306,7 @@ class LaBusqueda(SobreUnaCopia):
         self.assertIn(deuda, ids)
 
     def test_no_le_importan_las_tildes(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         deuda = self.fiar(id_p, cliente="Ramón el del camión")
@@ -314,14 +314,14 @@ class LaBusqueda(SobreUnaCopia):
         self.assertIn(deuda, {r["id"] for r in obtener_ventas(buscar="RAMÓN")})
 
     def test_lo_que_no_coincide_se_queda_fuera(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         id_p, _ = self.un_producto()
         self.fiar(id_p, cliente="Mariela")
         self.assertEqual(obtener_ventas(buscar="zzzz-no-existe"), [])
 
     def test_encuentra_por_la_descripcion_de_un_movimiento_de_caja(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         self.mover_caja("salidas_efectivo", 800, "Compra de nailon y bolsas")
         encontrados = obtener_ventas(buscar="nailon")
@@ -334,7 +334,7 @@ class ElResumen(SobreUnaCopia):
     diferencia que introduce cada prueba y no el total absoluto."""
 
     def test_separa_lo_que_entro_de_lo_que_salio(self):
-        from lddl.historial_vista import resumen_historial
+        from mitienda.historial_vista import resumen_historial
 
         antes = resumen_historial()
         id_p, _ = self.un_producto()
@@ -348,7 +348,7 @@ class ElResumen(SobreUnaCopia):
         self.assertEqual(ahora["ganancia"] - antes["ganancia"], 250)
 
     def test_lo_fiado_va_a_por_cobrar_y_no_a_lo_que_entro(self):
-        from lddl.historial_vista import resumen_historial
+        from mitienda.historial_vista import resumen_historial
 
         antes = resumen_historial()
         id_p, _ = self.un_producto()
@@ -358,7 +358,7 @@ class ElResumen(SobreUnaCopia):
         self.assertEqual(ahora["entro"], antes["entro"], "lo fiado no entró a la caja")
 
     def test_la_divisa_va_aparte_de_los_pesos(self):
-        from lddl.historial_vista import resumen_historial
+        from mitienda.historial_vista import resumen_historial
 
         antes = resumen_historial()
         self.cambiar_divisa("compra", cantidad=100)
@@ -367,7 +367,7 @@ class ElResumen(SobreUnaCopia):
         self.assertEqual(ahora["entro"], antes["entro"], "los USD no se suman a los CUP")
 
     def test_resume_el_filtro_entero_y_no_la_pagina(self):
-        from lddl.historial_vista import resumen_historial
+        from mitienda.historial_vista import resumen_historial
 
         antes = resumen_historial()["registros"]
         id_p, _ = self.un_producto()
@@ -376,7 +376,7 @@ class ElResumen(SobreUnaCopia):
         self.assertEqual(resumen_historial()["registros"] - antes, 6)
 
     def test_respeta_la_busqueda(self):
-        from lddl.historial_vista import resumen_historial
+        from mitienda.historial_vista import resumen_historial
 
         self.mover_caja("salidas_efectivo", 800, "Compra de nailon")
         self.mover_caja("salidas_efectivo", 300, "Otra cosa")
@@ -386,7 +386,7 @@ class ElResumen(SobreUnaCopia):
 class ElDetalle(SobreUnaCopia):
 
     def test_una_venta_enseña_sus_lineas_y_su_ganancia(self):
-        from lddl.historial_vista import detalle_de_registro
+        from mitienda.historial_vista import detalle_de_registro
 
         id_p, nombre = self.un_producto()
         venta = self.vender(id_p, total=1000, utilidad=250)
@@ -405,7 +405,7 @@ class ElDetalle(SobreUnaCopia):
 
     def test_el_detalle_no_habla_en_nombres_de_columna(self):
         """Lo que se lee tiene que ser español, no el esquema de la base."""
-        from lddl.historial_vista import detalle_de_registro
+        from mitienda.historial_vista import detalle_de_registro
 
         id_p, _ = self.un_producto()
         detalle = detalle_de_registro("Venta", self.vender(id_p))
@@ -415,7 +415,7 @@ class ElDetalle(SobreUnaCopia):
             self.assertNotIn(fea, crudo, f"'{fea}' no puede salir por pantalla")
 
     def test_una_deuda_enseña_sus_abonos_uno_a_uno(self):
-        from lddl.historial_vista import detalle_de_registro
+        from mitienda.historial_vista import detalle_de_registro
 
         id_p, _ = self.un_producto()
         deuda = self.fiar(id_p, total=1000, abonos=(200, 300))
@@ -429,8 +429,8 @@ class ElDetalle(SobreUnaCopia):
         self.assertIn("Falta", etiquetas)
 
     def test_un_movimiento_de_caja_dice_hacia_donde_va_el_dinero(self):
-        from lddl.historial_vista import detalle_de_registro
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.historial_vista import detalle_de_registro
+        from mitienda.ventas_datos import obtener_ventas
 
         self.mover_caja("salidas_efectivo", 800, "Compra de nailon")
         registro = [r for r in obtener_ventas() if r["tipo"] == "Salida de efectivo"][0]
@@ -439,7 +439,7 @@ class ElDetalle(SobreUnaCopia):
         self.assertIn("Sale de la caja", etiquetas)
 
     def test_un_cambio_de_divisa_enseña_la_tasa(self):
-        from lddl.historial_vista import detalle_de_registro
+        from mitienda.historial_vista import detalle_de_registro
 
         cambio = self.cambiar_divisa("compra", cantidad=100, tasa=420)
         detalle = detalle_de_registro("Cambio de Divisa", cambio)
@@ -448,7 +448,7 @@ class ElDetalle(SobreUnaCopia):
 
     def test_las_casillas_vacias_no_ocupan_linea(self):
         """Antes salían filas en blanco porque el campo estaba vacío."""
-        from lddl.historial_vista import detalle_de_registro
+        from mitienda.historial_vista import detalle_de_registro
 
         id_p, _ = self.un_producto()
         con = self.conexion()
@@ -471,7 +471,7 @@ class ElDetalle(SobreUnaCopia):
                                 f"fila vacía: {fila}")
 
     def test_un_registro_que_no_existe_no_devuelve_nada(self):
-        from lddl.historial_vista import detalle_de_registro
+        from mitienda.historial_vista import detalle_de_registro
 
         self.assertIsNone(detalle_de_registro("Venta", 999999))
 
@@ -482,7 +482,7 @@ class PorLaApi(SobreUnaCopia):
     def cliente(self):
         from fastapi.testclient import TestClient
 
-        from lddl.api import app
+        from mitienda.api import app
         return TestClient(app)
 
     def test_el_resumen_contesta_con_las_cifras(self):

@@ -26,7 +26,7 @@ python -m PyInstaller --noconfirm --onefile --windowed ^
 El resultado queda en `dist\MiTienda.exe`. Cópialo a la carpeta donde estén
 `tienda.db`, `config_caja.json` y `licencia.lic`: el programa los busca
 **junto al ejecutable**
-(ver `obtener_ruta_base()` en `lddl/rutas.py`). La interfaz viaja dentro del
+(ver `obtener_ruta_base()` en `mitienda/rutas.py`). La interfaz viaja dentro del
 `.exe` y se descomprime en una carpeta temporal; la base de datos no, y así
 debe seguir siendo, o cada actualización del programa se llevaría por delante
 las ventas.
@@ -68,7 +68,7 @@ vuelve a salir la ventana vacía, es lo primero que hay que mirar.
 
 ## La ventana de tkinter
 
-`ventas.py` y `lddl/ui/` ya no están en el repositorio: se retiraron una vez
+`ventas.py` y `mitienda/ui/` ya no están en el repositorio: se retiraron una vez
 que la interfaz de React quedó terminada. De ellos colgaban las pruebas de
 caracterización que demuestran que las cuentas del cobro, del carrito y de
 las deudas no cambiaron al mudarse a React; para no perder esa red, antes de
@@ -99,7 +99,7 @@ Cómo se emite y qué pasa con la llave privada: en la skill
 - `herramientas/` está en `excludes` del `.spec`. Es lo que firma licencias:
   dentro del `.exe` de un cliente, cualquiera podría fabricarse las suyas.
 - **No hay dependencias nuevas ni megabytes de más.** La verificación Ed25519
-  está escrita en Python puro en `lddl/ed25519.py`, unas ochenta líneas del
+  está escrita en Python puro en `mitienda/ed25519.py`, unas ochenta líneas del
   RFC 8032, comprobadas contra sus vectores oficiales en
   `pruebas/test_ed25519.py`. Tarda unos 10 ms, una vez por arranque.
 
@@ -141,7 +141,7 @@ por cada cliente.
 
 ## Cambiar el nombre para otro negocio
 
-El nombre vive en un solo sitio, `lddl/__init__.py`:
+El nombre vive en un solo sitio, `mitienda/__init__.py`:
 
 ```python
 NOMBRE_APP = "MiTienda"
@@ -153,9 +153,9 @@ el título de la ventana, el de la API y el del ejecutable.
 **Ese nombre va firmado dentro de la licencia**, en el campo `producto`, así
 que la licencia de un programa no abre otro aunque compartan la llave. Si
 montas un producto aparte de verdad, cambia también `CLAVE_REGISTRO` en
-`lddl/almacen_licencia.py` (si no, los dos comparten la marca del primer
-arranque en la misma computadora), `SAL` en `lddl/maquina.py` y `CABECERA` en
-`lddl/licencia.py`, y dale su propio par de llaves. Está detallado en la skill
+`mitienda/almacen_licencia.py` (si no, los dos comparten la marca del primer
+arranque en la misma computadora), `SAL` en `mitienda/maquina.py` y `CABECERA` en
+`mitienda/licencia.py`, y dale su propio par de llaves. Está detallado en la skill
 `desplegar-mitienda`.
 
 ## Antes de entregar

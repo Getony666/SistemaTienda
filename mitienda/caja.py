@@ -543,7 +543,7 @@ def obtener_movimientos_del_dia(fecha):
     """Entradas, salidas y cambios de divisa de un día, del más nuevo al más viejo.
 
     Es la lista que acompaña al cuadre en la pantalla de Corte, y deja fuera
-    exactamente las mismas filas que la cadena de lddl.cuadre: si una suma
+    exactamente las mismas filas que la cadena de mitienda.cuadre: si una suma
     allí, aparece aquí, y al revés.
 
     Una operación de cambio sale como una sola línea con sus dos lados -lo que

@@ -1,6 +1,6 @@
 """El carrito de la venta, sin interfaz.
 
-Aquí vive lo que antes estaba repartido por `lddl/ui/panel_ventas.py`: añadir
+Aquí vive lo que antes estaba repartido por `mitienda/ui/panel_ventas.py`: añadir
 un producto, acumular cuando ya está, cambiarle la cantidad, quitarlo y sumar
 el total. Ninguna función sabe que existe una pantalla.
 

@@ -1,7 +1,7 @@
 """El cobro de deudas no puede cambiar.
 
 DEUDA guarda lo que el diálogo de Pagar Deuda enviaba a la base antes de sacar
-la aritmética a `lddl/calculo_deuda.py`. Se obtuvo conduciendo el diálogo real
+la aritmética a `mitienda/calculo_deuda.py`. Se obtuvo conduciendo el diálogo real
 con un espía en lugar de `registrar_cobro_deuda_en_db`, sobre una copia de la
 base: ningún cobro llegó a guardarse.
 
@@ -14,7 +14,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lddl.calculo_deuda import (  # noqa: E402
+from mitienda.calculo_deuda import (  # noqa: E402
     Abono,
     calcular_cobro,
     observaciones_del_cobro,

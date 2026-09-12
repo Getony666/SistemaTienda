@@ -1,6 +1,6 @@
 """Las reglas de la licencia: qué se acepta, qué se rechaza y por qué motivo.
 
-`lddl/licencia.py` es un módulo puro, igual que `calculo_cobro` o `carrito`:
+`mitienda/licencia.py` es un módulo puro, igual que `calculo_cobro` o `carrito`:
 no abre ficheros, no mira el reloj y no sabe en qué computadora está. Todo
 eso -el texto, la fecha de hoy y la huella de la máquina- se lo dan hecho.
 Por eso se puede probar un vencimiento sin tocar la hora de Windows.
@@ -19,7 +19,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from herramientas.firma import firmar, llave_publica_de  # noqa: E402
-from lddl import licencia  # noqa: E402
+from mitienda import licencia  # noqa: E402
 
 
 PRIVADA = bytes(range(32))

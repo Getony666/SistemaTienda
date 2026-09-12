@@ -8,7 +8,7 @@ este fichero no está en verde, nada de lo demás significa nada.
 Los vectores salen de la sección 7.1 del RFC 8032 (§ "Test Vectors for
 Ed25519"). No se tocan: son el patrón, no un dato del proyecto.
 
-No abre la base de datos: `lddl/ed25519.py` no toca disco ni red.
+No abre la base de datos: `mitienda/ed25519.py` no toca disco ni red.
 
     python -m unittest discover -s pruebas -v
 """
@@ -20,7 +20,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lddl.ed25519 import verificar  # noqa: E402
+from mitienda.ed25519 import verificar  # noqa: E402
 
 
 def octetos(hexadecimal):

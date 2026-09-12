@@ -2,11 +2,11 @@
 
 La tabla de casos (ESCENARIOS, FINALIZAR) vive en `pruebas/casos.py`: es lo
 que `finalizar_venta` enviaba a la base de datos antes de usar
-`lddl/calculo_cobro.py`. Se obtuvo ejecutando la aplicación con un espía en
+`mitienda/calculo_cobro.py`. Se obtuvo ejecutando la aplicación con un espía en
 lugar de `registrar_venta_en_db`, de modo que ninguna venta llegó a
 guardarse.
 
-La ventana que lo produjo (`ventas.py`, `lddl/ui/`) ya no está en el
+La ventana que lo produjo (`ventas.py`, `mitienda/ui/`) ya no está en el
 proyecto. Antes de retirarla se le hizo repasar estos mismos escenarios una
 última vez, con el mismo espía, y quedó grabado en
 `pruebas/acta_de_la_app_vieja.json`. `ElDesgloseCoincideConLaReferencia`
@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from casos import ESCENARIOS, FINALIZAR, TOTAL, pago_del_escenario  # noqa: E402
-from lddl.calculo_cobro import desglosar_para_registro  # noqa: E402
+from mitienda.calculo_cobro import desglosar_para_registro  # noqa: E402
 
 _AQUI = os.path.dirname(os.path.abspath(__file__))
 _RUTA_ACTA = os.path.join(_AQUI, "acta_de_la_app_vieja.json")

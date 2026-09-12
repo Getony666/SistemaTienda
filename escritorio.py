@@ -10,7 +10,7 @@ Un solo programa, sin navegador a la vista y sin conexión a internet:
 Ésta es la interfaz del programa. Están los cuatro paneles: Ventas,
 Historial, Cambio de Divisa y Corte de Caja.
 
-Hubo una ventana de tkinter (`ventas.py`, `lddl/ui/`) antes que ésta. Se
+Hubo una ventana de tkinter (`ventas.py`, `mitienda/ui/`) antes que ésta. Se
 retiró del proyecto: su testimonio -lo que contestaba para los mismos casos
 que hoy cubren las pruebas de caracterización- quedó grabado en
 `pruebas/acta_de_la_app_vieja.json`, así que la garantía de que las cuentas
@@ -32,7 +32,7 @@ import urllib.request
 if getattr(sys, "frozen", False):
     # Empaquetado: la interfaz viaja dentro del ejecutable y PyInstaller la
     # descomprime en una carpeta temporal. La base de datos NO va ahí: la
-    # busca `lddl/rutas.py` junto al .exe, que es donde debe estar.
+    # busca `mitienda/rutas.py` junto al .exe, que es donde debe estar.
     RAIZ = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
 else:
     RAIZ = os.path.dirname(os.path.abspath(__file__))
@@ -80,7 +80,7 @@ def titulo_de_la_ventana(por_defecto):
     se abra.
     """
     try:
-        from lddl import NOMBRE_APP, estado_licencia
+        from mitienda import NOMBRE_APP, estado_licencia
         negocio = (estado_licencia.actual().negocio or "").strip()
         return f"{NOMBRE_APP} - {negocio}" if negocio else por_defecto
     except Exception:  # noqa: BLE001
@@ -97,8 +97,8 @@ def main():
     import webview
     from fastapi.staticfiles import StaticFiles
 
-    from lddl import TITULO_VENTANA
-    from lddl.api import app
+    from mitienda import TITULO_VENTANA
+    from mitienda.api import app
 
     # Se monta al final para que las rutas de la API ganen sobre los ficheros.
     app.mount("/", StaticFiles(directory=DIST, html=True), name="interfaz")

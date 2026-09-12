@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from herramientas import generar_licencia, generar_llaves  # noqa: E402
 from herramientas.firma import llave_publica_de  # noqa: E402
-from lddl import licencia  # noqa: E402
+from mitienda import licencia  # noqa: E402
 
 MAQUINA = "A7K2-3M4P-XR7T"
 PRODUCTO = "MiTienda"
@@ -115,7 +115,7 @@ class ElProductoAlQuePerteneceLaLicencia(unittest.TestCase):
     def test_por_defecto_pone_el_nombre_de_este_programa(self):
         """Cada copia del proyecto lleva su NOMBRE_APP, asi que el generador
         de esa copia acierta solo y no hay que acordarse de escribirlo."""
-        from lddl import NOMBRE_APP
+        from mitienda import NOMBRE_APP
 
         texto = generar_licencia.emitir(PRIVADA, "X", MAQUINA, meses=12)
         self.assertIn(f"producto: {NOMBRE_APP}", texto)

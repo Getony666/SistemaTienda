@@ -15,9 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import base  # noqa: E402
-from lddl import rutas  # noqa: E402
-from lddl.esquema import preparar_base  # noqa: E402
-from lddl.productos import (  # noqa: E402
+from mitienda import rutas  # noqa: E402
+from mitienda.esquema import preparar_base  # noqa: E402
+from mitienda.productos import (  # noqa: E402
     CATEGORIAS, actualizar_producto, agregar_producto, normalizar_categoria,
 )
 

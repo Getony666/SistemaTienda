@@ -22,12 +22,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import base  # noqa: E402
-from lddl import rutas, sesion, usuarios  # noqa: E402
-from lddl.esquema import preparar_base  # noqa: E402
+from mitienda import rutas, sesion, usuarios  # noqa: E402
+from mitienda.esquema import preparar_base  # noqa: E402
 
 try:
     from fastapi.testclient import TestClient
-    from lddl.api import app
+    from mitienda.api import app
     HAY_API = True
 except Exception:
     HAY_API = False
@@ -263,7 +263,7 @@ class LaSesion(SobreUnaCopia):
 class LoQueSeGuardaLlevaNombre(SobreUnaCopia):
 
     def test_una_merma_queda_a_nombre_de_quien_la_hizo(self):
-        from lddl.inventario import registrar_merma_de_carrito
+        from mitienda.inventario import registrar_merma_de_carrito
 
         self.crear("Luis", usuarios.EMPLEADO, "1111")
         sesion.entrar("Luis", "1111")
@@ -278,7 +278,7 @@ class LoQueSeGuardaLlevaNombre(SobreUnaCopia):
             "Luis")
 
     def test_una_entrada_de_efectivo_tambien(self):
-        from lddl.caja import registrar_entrada_efectivo
+        from mitienda.caja import registrar_entrada_efectivo
 
         self.crear("Ana", usuarios.ADMIN, "1111")
         sesion.entrar("Ana", "1111")
@@ -289,8 +289,8 @@ class LoQueSeGuardaLlevaNombre(SobreUnaCopia):
             "Ana")
 
     def test_el_historial_lo_ensena(self):
-        from lddl.caja import registrar_entrada_efectivo
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.caja import registrar_entrada_efectivo
+        from mitienda.ventas_datos import obtener_ventas
 
         self.crear("Ana", usuarios.ADMIN, "1111")
         sesion.entrar("Ana", "1111")
@@ -302,10 +302,10 @@ class LoQueSeGuardaLlevaNombre(SobreUnaCopia):
     def test_TODAS_las_filas_del_historial_traen_el_campo(self):
         """Se me habia olvidado en las altas de producto: sin campo, la
         columna de la tabla salia en blanco sin que nadie se enterara."""
-        from lddl.caja import registrar_entrada_efectivo, registrar_operacion_cambio
-        from lddl.inventario import registrar_merma_de_carrito
-        from lddl.productos import agregar_producto
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.caja import registrar_entrada_efectivo, registrar_operacion_cambio
+        from mitienda.inventario import registrar_merma_de_carrito
+        from mitienda.productos import agregar_producto
+        from mitienda.ventas_datos import obtener_ventas
 
         self.crear("Ana", usuarios.ADMIN, "1111")
         sesion.entrar("Ana", "1111")
@@ -323,7 +323,7 @@ class LoQueSeGuardaLlevaNombre(SobreUnaCopia):
 
     def test_sin_sesion_se_guarda_sin_nombre_pero_no_revienta(self):
         """Las pruebas viejas y los scripts no abren sesion: no pueden fallar."""
-        from lddl.caja import registrar_entrada_efectivo
+        from mitienda.caja import registrar_entrada_efectivo
 
         exito, _ = registrar_entrada_efectivo("CUP", 50, "sin nadie dentro")
         self.assertTrue(exito)

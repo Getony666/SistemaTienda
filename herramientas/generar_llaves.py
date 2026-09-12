@@ -3,7 +3,7 @@
     python herramientas/generar_llaves.py
 
 La privada firma las licencias y no sale nunca de esta computadora. La
-pública se copia a mano dentro de lddl/licencia_llave.py y viaja en el .exe
+pública se copia a mano dentro de mitienda/licencia_llave.py y viaja en el .exe
 de todos los clientes.
 
 Dos avisos que no son retórica:
@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from herramientas.firma import llave_publica_de  # noqa: E402
 
-# Fuera del repositorio a propósito: la carpeta LDDL se sube a GitHub.
+# Fuera del repositorio a propósito: la carpeta MiTienda-Dev se sube a GitHub.
 RUTA_PRIVADA = os.path.join(os.path.expanduser("~"), "Documents", "Py", "!Salva",
                             "llaves", "mitienda_privada.key")
 RUTA_PUBLICA = os.path.join(os.path.dirname(RUTA_PRIVADA), "mitienda_publica.key")
@@ -93,7 +93,7 @@ def main(argumentos=None):
     print(f"Llave privada -> {opciones.privada}")
     print(f"Llave publica -> {opciones.publica}")
     print()
-    print("Copia esta linea dentro de lddl/licencia_llave.py:")
+    print("Copia esta linea dentro de mitienda/licencia_llave.py:")
     print()
     print(f"    LLAVE_PUBLICA = bytes.fromhex(\"{binascii.hexlify(publica).decode()}\")")
     print()

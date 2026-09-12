@@ -21,7 +21,7 @@ Los endpoints de /cobro no tocan la base: son aritmética.
 
 Para levantarla:
 
-    python -m uvicorn lddl.api:app --reload
+    python -m uvicorn mitienda.api:app --reload
 
 y la documentación interactiva queda en http://127.0.0.1:8000/docs
 """

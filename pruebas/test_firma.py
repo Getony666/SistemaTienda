@@ -20,7 +20,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from lddl.ed25519 import verificar  # noqa: E402
+from mitienda.ed25519 import verificar  # noqa: E402
 from herramientas.firma import firmar, llave_publica_de  # noqa: E402
 from test_ed25519 import VECTORES_RFC_8032, octetos  # noqa: E402
 

@@ -46,7 +46,7 @@ def _preparar_licencias():
     """Apunta el sistema de licencias a la llave, la máquina y el registro
     de pruebas. Se hace una vez, al importar este módulo."""
     from herramientas.firma import llave_publica_de
-    from lddl import almacen_licencia, estado_licencia
+    from mitienda import almacen_licencia, estado_licencia
 
     almacen_licencia.CLAVE_REGISTRO = CLAVE_REGISTRO_DE_PRUEBAS
     estado_licencia.LLAVE_PUBLICA = llave_publica_de(PRIVADA_DE_PRUEBAS)
@@ -63,7 +63,7 @@ def poner_licencia(carpeta):
     del futuro cuando alguien corra las pruebas con el reloj un poco movido.
     """
     from herramientas.generar_licencia import emitir
-    from lddl import estado_licencia
+    from mitienda import estado_licencia
 
     texto = emitir(PRIVADA_DE_PRUEBAS, "Tienda de Pruebas", MAQUINA_DE_PRUEBAS,
                    meses=120, desde=datetime.date.today() - datetime.timedelta(days=1))
@@ -80,7 +80,7 @@ def quitar_licencia(carpeta):
     empezar en blanco: las demas se quedan con la que pone
     `carpeta_con_copia`.
     """
-    from lddl import estado_licencia
+    from mitienda import estado_licencia
 
     ruta = os.path.join(carpeta, "licencia.lic")
     if os.path.exists(ruta):
@@ -99,8 +99,8 @@ def carpeta_con_copia(prefijo="mitienda-pruebas-"):
     Devuelve la ruta. Quien la pida se encarga de borrarla, normalmente en
     un tearDown con `shutil.rmtree(ruta, ignore_errors=True)`.
     """
-    from lddl import rutas
-    from lddl.esquema import preparar_base
+    from mitienda import rutas
+    from mitienda.esquema import preparar_base
 
     temporal = tempfile.mkdtemp(prefix=prefijo)
     shutil.copy2(BASE, os.path.join(temporal, "tienda.db"))
@@ -121,7 +121,7 @@ def empezar_modulo():
     verdad: la ventana lee la base al construirse, así que redirigirla más
     tarde llegaría tarde.
     """
-    from lddl import rutas
+    from mitienda import rutas
 
     carpeta = carpeta_con_copia()
     rutas.fijar_directorio_base(carpeta)
@@ -130,7 +130,7 @@ def empezar_modulo():
 
 def terminar_modulo(carpeta):
     """Devuelve el programa a su base normal y borra la copia."""
-    from lddl import rutas
+    from mitienda import rutas
 
     rutas.fijar_directorio_base(None)
     shutil.rmtree(carpeta, ignore_errors=True)

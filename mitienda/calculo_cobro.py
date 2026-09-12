@@ -1,6 +1,6 @@
 """Cálculo del pago y del vuelto, sin interfaz.
 
-Aquí vive la aritmética que antes estaba repartida por `lddl/ui/cobro.py`:
+Aquí vive la aritmética que antes estaba repartida por `mitienda/ui/cobro.py`:
 cuánto se ha pagado, si cubre la venta, cuánto se devuelve y cómo se reparte
 ese dinero entre efectivo y transferencia a la hora de guardar la venta.
 

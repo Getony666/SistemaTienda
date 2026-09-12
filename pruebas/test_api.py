@@ -17,7 +17,7 @@ import base  # noqa: E402
 
 try:
     from fastapi.testclient import TestClient
-    from lddl.api import app
+    from mitienda.api import app
     HAY_API = True
 except Exception:  # sin fastapi instalado
     HAY_API = False
@@ -222,7 +222,7 @@ class LaApiEscribeDeVerdad(unittest.TestCase):
     def setUpClass(cls):
         import base
 
-        from lddl import rutas, sesion, usuarios
+        from mitienda import rutas, sesion, usuarios
 
         cls.rutas = rutas
         cls.sesion = sesion

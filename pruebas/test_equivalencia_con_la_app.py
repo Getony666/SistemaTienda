@@ -2,10 +2,10 @@
 
 Las tablas de casos (CASOS, REFERENCIA, TEXTOS, CASOS_MIXTO, MIXTO) viven en
 `pruebas/casos.py`: son los números que la aplicación calculaba antes de
-sacar la aritmética a `lddl/calculo_cobro.py`, tomados ejecutando la app tal
+sacar la aritmética a `mitienda/calculo_cobro.py`, tomados ejecutando la app tal
 como estaba, no a mano.
 
-La ventana de tkinter que las produjo (`ventas.py`, `lddl/ui/`) ya no está en
+La ventana de tkinter que las produjo (`ventas.py`, `mitienda/ui/`) ya no está en
 el proyecto. Antes de retirarla se la hizo repasar estos mismos casos una
 última vez, y lo que contestó quedó grabado en
 `pruebas/acta_de_la_app_vieja.json`. `ElModuloDaLaReferencia` compara el
@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from casos import CASOS, MIXTO, REFERENCIA, TEXTOS, pago_del_caso  # noqa: E402
-from lddl.calculo_cobro import calcular_vuelto  # noqa: E402
+from mitienda.calculo_cobro import calcular_vuelto  # noqa: E402
 
 _AQUI = os.path.dirname(os.path.abspath(__file__))
 _RUTA_ACTA = os.path.join(_AQUI, "acta_de_la_app_vieja.json")

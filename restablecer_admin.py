@@ -21,9 +21,9 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 
-from lddl import rutas, usuarios  # noqa: E402
-from lddl.esquema import preparar_base  # noqa: E402
-from lddl.historial import registrar_historial  # noqa: E402
+from mitienda import rutas, usuarios  # noqa: E402
+from mitienda.esquema import preparar_base  # noqa: E402
+from mitienda.historial import registrar_historial  # noqa: E402
 
 
 def main():

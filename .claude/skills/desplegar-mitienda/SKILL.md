@@ -9,7 +9,7 @@ Punto de venta de una tienda cubana. Lógica en Python, interfaz en React
 dentro de una ventana de escritorio (pywebview + WebView2), todo empaquetado
 en un solo `.exe` con PyInstaller.
 
-Raíz del proyecto: `C:\Users\Mirielys\Documents\Py\LDDL`
+Raíz del proyecto: `C:\Users\Mirielys\Documents\Py\MiTienda-Dev`
 
 ## Las tres trampas de este proyecto
 
@@ -168,12 +168,12 @@ python herramientas/generar_licencia.py "Negocio" CODIGO --meses 12 --producto M
 ```
 
 Y en la copia de ese otro proyecto hay que cambiar, además de `NOMBRE_APP`:
-`CLAVE_REGISTRO` en `lddl/almacen_licencia.py` -si no, los dos programas
+`CLAVE_REGISTRO` en `mitienda/almacen_licencia.py` -si no, los dos programas
 comparten la marca del primer arranque en la misma computadora-, `SAL` en
-`lddl/maquina.py` y `CABECERA` en `lddl/licencia.py`. Y un par de llaves
+`mitienda/maquina.py` y `CABECERA` en `mitienda/licencia.py`. Y un par de llaves
 propio, con `generar_llaves.py --privada ... --publica ...`.
 
-**Nunca copiar LDDL a una tienda**: `.git/config` lleva el token de GitHub en
+**Nunca copiar MiTienda-Dev a una tienda**: `.git/config` lleva el token de GitHub en
 texto plano, y además les entregaría el código fuente completo.
 
 Para dejar la base virgen:
@@ -208,7 +208,7 @@ ponle su permiso: hay una prueba que falla si se te olvida.
 
 ## Cambiar el nombre para otro negocio
 
-Vive en un solo sitio, `lddl/__init__.py`:
+Vive en un solo sitio, `mitienda/__init__.py`:
 
 ```python
 NOMBRE_APP = "MiTienda"
@@ -220,23 +220,23 @@ Cámbialo ahí y ajusta `--name` e `--icon` al compilar.
 
 | Dónde | Qué |
 |---|---|
-| `lddl/calculo_cobro.py` | vuelto y desglose del pago, sin interfaz |
-| `lddl/calculo_deuda.py` | cobro de deudas |
-| `lddl/carrito.py` | el carrito, funciones puras |
-| `lddl/api.py` | la API; aquí viven los permisos de cada ruta |
-| `lddl/sesion.py` | quién está dentro ahora |
-| `lddl/usuarios.py` | usuarios, roles, permisos, PIN cifrado |
-| `lddl/esquema.py` | crea y migra tablas; `preparar_base()` al arrancar |
+| `mitienda/calculo_cobro.py` | vuelto y desglose del pago, sin interfaz |
+| `mitienda/calculo_deuda.py` | cobro de deudas |
+| `mitienda/carrito.py` | el carrito, funciones puras |
+| `mitienda/api.py` | la API; aquí viven los permisos de cada ruta |
+| `mitienda/sesion.py` | quién está dentro ahora |
+| `mitienda/usuarios.py` | usuarios, roles, permisos, PIN cifrado |
+| `mitienda/esquema.py` | crea y migra tablas; `preparar_base()` al arrancar |
 | `interfaz/src/` | React |
-| `lddl/licencia.py` | reglas de la licencia; `ed25519.py` verifica la firma |
-| `lddl/estado_licencia.py` | el veredicto del arranque y el candado de la API |
+| `mitienda/licencia.py` | reglas de la licencia; `ed25519.py` verifica la firma |
+| `mitienda/estado_licencia.py` | el veredicto del arranque y el candado de la API |
 | `herramientas/` | emite licencias. **Nunca se compila en el .exe** |
 | `pruebas/acta_de_la_app_vieja.json` | testimonio de la ventana de tkinter que hubo antes de React |
 
 ## Detalles que se olvidan
 
 - La base se busca **junto al ejecutable** (`obtener_ruta_base()` en
-  `lddl/rutas.py`), no dentro del `.exe`.
+  `mitienda/rutas.py`), no dentro del `.exe`.
 - Las fechas de la interfaz se arman campo a campo, nunca con
   `toISOString()`: eso da UTC y Cuba va 4-5 horas por detrás. Con UTC, toda
   venta hecha después de las 8 de la noche caía en el día siguiente y el

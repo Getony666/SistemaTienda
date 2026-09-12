@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import base  # noqa: E402
-from lddl import rutas  # noqa: E402
+from mitienda import rutas  # noqa: E402
 
 
 class SobreUnaCopia(unittest.TestCase):
@@ -65,7 +65,7 @@ class SobreUnaCopia(unittest.TestCase):
 class FiltroDeMensajeria(SobreUnaCopia):
 
     def test_solo_devuelve_las_marcadas(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         (id_a, _), (id_b, _) = self.dos_productos()
         con_mensajeria = self.vender(id_a, mensajeria=True)
@@ -77,7 +77,7 @@ class FiltroDeMensajeria(SobreUnaCopia):
 
     def test_cada_venta_dice_si_es_mensajeria_sin_abrir_el_detalle(self):
         """La tabla pinta la columna con esto, no con detalle_extra."""
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         (id_a, _), (id_b, _) = self.dos_productos()
         marcada = self.vender(id_a, mensajeria=True)
@@ -89,7 +89,7 @@ class FiltroDeMensajeria(SobreUnaCopia):
 
     def test_una_deuda_marcada_tambien_sale(self):
         """La mensajería es una marca, no un tipo: puede ir sobre una deuda."""
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         (id_a, _), _b = self.dos_productos()
         con = self.conexion()
@@ -109,7 +109,7 @@ class FiltroDeMensajeria(SobreUnaCopia):
         self.assertIn(deuda_id, ids)
 
     def test_sin_filtro_salen_las_dos(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         (id_a, _), (id_b, _) = self.dos_productos()
         a = self.vender(id_a, mensajeria=True)
@@ -120,7 +120,7 @@ class FiltroDeMensajeria(SobreUnaCopia):
 
     def test_no_arrastra_movimientos_de_caja(self):
         """Un cambio de divisa no es una mensajería y no debe colarse."""
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         con = self.conexion()
         con.execute(
@@ -136,7 +136,7 @@ class FiltroDeMensajeria(SobreUnaCopia):
 class FiltroDeProducto(SobreUnaCopia):
 
     def test_solo_las_lineas_que_llevan_ese_producto(self):
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         (id_a, _), (id_b, _) = self.dos_productos()
         con_a = self.vender(id_a, mensajeria=False)
@@ -148,8 +148,8 @@ class FiltroDeProducto(SobreUnaCopia):
 
     def test_recoge_tambien_lo_que_no_son_ventas(self):
         """Una merma de ese producto tiene que aparecer con las ventas."""
-        from lddl.inventario import registrar_merma_de_carrito
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.inventario import registrar_merma_de_carrito
+        from mitienda.ventas_datos import obtener_ventas
 
         (id_a, nombre_a), _b = self.dos_productos()
         self.vender(id_a, mensajeria=False)
@@ -163,7 +163,7 @@ class FiltroDeProducto(SobreUnaCopia):
 
     def test_los_movimientos_de_caja_se_quedan_fuera(self):
         """No tienen producto, asi que no pueden ser de ninguno."""
-        from lddl.ventas_datos import obtener_ventas
+        from mitienda.ventas_datos import obtener_ventas
 
         (id_a, _), _b = self.dos_productos()
         con = self.conexion()

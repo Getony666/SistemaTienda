@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import base  # noqa: E402
-from lddl import rutas  # noqa: E402
+from mitienda import rutas  # noqa: E402
 
 
 class SobreUnaCopia(unittest.TestCase):
@@ -52,7 +52,7 @@ class SobreUnaCopia(unittest.TestCase):
 class SalidaDeCarrito(SobreUnaCopia):
 
     def test_saca_todas_las_lineas_y_genera_una_sola_deuda(self):
-        from lddl.inventario import registrar_salida_de_carrito
+        from mitienda.inventario import registrar_salida_de_carrito
 
         (id_a, stock_a, costo_a), (id_b, stock_b, costo_b) = self.dos_productos_con_stock()
         deudas_antes = self.consultar("SELECT COUNT(*) FROM ventas WHERE metodo_pago='Salida'")[0][0]
@@ -75,7 +75,7 @@ class SalidaDeCarrito(SobreUnaCopia):
         self.assertEqual(detalles, 2)
 
     def test_se_valora_al_costo_del_almacen_no_al_de_venta(self):
-        from lddl.inventario import registrar_salida_de_carrito
+        from mitienda.inventario import registrar_salida_de_carrito
 
         (id_a, _stock, costo_a), _b = self.dos_productos_con_stock()
         registrar_salida_de_carrito([{"producto_id": id_a, "cantidad": 2}])
@@ -84,7 +84,7 @@ class SalidaDeCarrito(SobreUnaCopia):
         self.assertAlmostEqual(total, 2 * costo_a)
 
     def test_si_una_linea_no_tiene_stock_no_se_guarda_ninguna(self):
-        from lddl.inventario import registrar_salida_de_carrito
+        from mitienda.inventario import registrar_salida_de_carrito
 
         (id_a, stock_a, _), (id_b, stock_b, _) = self.dos_productos_con_stock()
         exito, motivo = registrar_salida_de_carrito([
@@ -97,7 +97,7 @@ class SalidaDeCarrito(SobreUnaCopia):
         self.assertAlmostEqual(self.stock(id_b), stock_b)
 
     def test_un_producto_inexistente_lo_rechaza_entero(self):
-        from lddl.inventario import registrar_salida_de_carrito
+        from mitienda.inventario import registrar_salida_de_carrito
 
         (id_a, stock_a, _), _b = self.dos_productos_con_stock()
         exito, _motivo = registrar_salida_de_carrito([
@@ -108,13 +108,13 @@ class SalidaDeCarrito(SobreUnaCopia):
         self.assertAlmostEqual(self.stock(id_a), stock_a)
 
     def test_el_carrito_vacio_se_rechaza(self):
-        from lddl.inventario import registrar_salida_de_carrito
+        from mitienda.inventario import registrar_salida_de_carrito
         self.assertFalse(registrar_salida_de_carrito([])[0])
 
     def test_revertirla_devuelve_el_stock_de_TODAS_las_lineas(self):
         """Lo que se rompia si la salida de varias lineas se guardaba a la vieja."""
-        from lddl.historial import revertir_registro
-        from lddl.inventario import registrar_salida_de_carrito
+        from mitienda.historial import revertir_registro
+        from mitienda.inventario import registrar_salida_de_carrito
 
         (id_a, stock_a, _), (id_b, stock_b, _) = self.dos_productos_con_stock()
         self.assertTrue(registrar_salida_de_carrito(
@@ -129,8 +129,8 @@ class SalidaDeCarrito(SobreUnaCopia):
         self.assertAlmostEqual(self.stock(id_b), stock_b, msg="la segunda linea no volvio")
 
     def test_revertirla_borra_la_deuda_y_las_filas_del_almacen(self):
-        from lddl.historial import revertir_registro
-        from lddl.inventario import registrar_salida_de_carrito
+        from mitienda.historial import revertir_registro
+        from mitienda.inventario import registrar_salida_de_carrito
 
         (id_a, _sa, _), (id_b, _sb, _) = self.dos_productos_con_stock()
         salidas_antes = self.consultar("SELECT COUNT(*) FROM salidas_inventario")[0][0]
@@ -152,7 +152,7 @@ class SalidaDeCarrito(SobreUnaCopia):
 class MermaDeCarrito(SobreUnaCopia):
 
     def test_baja_el_stock_sin_mover_dinero(self):
-        from lddl.inventario import registrar_merma_de_carrito
+        from mitienda.inventario import registrar_merma_de_carrito
 
         (id_a, stock_a, _), (id_b, stock_b, _) = self.dos_productos_con_stock()
         ventas_antes = self.consultar("SELECT COUNT(*) FROM ventas")[0][0]
@@ -170,7 +170,7 @@ class MermaDeCarrito(SobreUnaCopia):
                          efectivo_antes)
 
     def test_cada_linea_queda_como_su_propia_merma(self):
-        from lddl.inventario import registrar_merma_de_carrito
+        from mitienda.inventario import registrar_merma_de_carrito
 
         (id_a, _sa, _), (id_b, _sb, _) = self.dos_productos_con_stock()
         antes = self.consultar("SELECT COUNT(*) FROM salidas_inventario")[0][0]
@@ -180,7 +180,7 @@ class MermaDeCarrito(SobreUnaCopia):
                          antes + 2)
 
     def test_si_una_linea_falla_no_se_guarda_ninguna(self):
-        from lddl.inventario import registrar_merma_de_carrito
+        from mitienda.inventario import registrar_merma_de_carrito
 
         (id_a, stock_a, _), (id_b, stock_b, _) = self.dos_productos_con_stock()
         exito, _motivo = registrar_merma_de_carrito([
@@ -191,8 +191,8 @@ class MermaDeCarrito(SobreUnaCopia):
         self.assertAlmostEqual(self.stock(id_a), stock_a)
 
     def test_revertir_una_linea_devuelve_solo_esa(self):
-        from lddl.historial import revertir_registro
-        from lddl.inventario import registrar_merma_de_carrito
+        from mitienda.historial import revertir_registro
+        from mitienda.inventario import registrar_merma_de_carrito
 
         (id_a, stock_a, _), (id_b, stock_b, _) = self.dos_productos_con_stock()
         registrar_merma_de_carrito(
@@ -210,7 +210,7 @@ class MermaDeCarrito(SobreUnaCopia):
 class ElCostoViajaEnLaLista(SobreUnaCopia):
 
     def test_buscar_productos_devuelve_el_precio_de_compra(self):
-        from lddl.productos import buscar_productos
+        from mitienda.productos import buscar_productos
 
         productos = buscar_productos("")
         self.assertTrue(productos)
@@ -223,7 +223,7 @@ class ElCostoViajaEnLaLista(SobreUnaCopia):
         orden sigue importando: `buscar_productos` devuelve tuplas crudas y
         la API las desempaqueta por posicion.
         """
-        from lddl.productos import buscar_productos
+        from mitienda.productos import buscar_productos
 
         p = buscar_productos("")[0]
         con = sqlite3.connect(os.path.join(self.temporal, "tienda.db"))

@@ -62,11 +62,11 @@ trivial.
 
 | Módulo | Responsabilidad | ¿Va en el `.exe`? |
 |---|---|---|
-| `lddl/ed25519.py` | Verificar firmas Ed25519. Python puro (RFC 8032). Sólo `verificar()`, no firma. | Sí |
-| `lddl/licencia.py` | **Módulo puro.** Analiza y valida el texto de una licencia. Sin disco, sin red, sin reloj propio. | Sí |
-| `lddl/maquina.py` | Calcula el código de máquina de esta computadora. | Sí |
-| `lddl/almacen_licencia.py` | Lee `licencia.lic`, lee y escribe la marca anti-reloj. | Sí |
-| `lddl/estado_licencia.py` | Guarda el veredicto del arranque, como `sesion.py` guarda el usuario. | Sí |
+| `mitienda/ed25519.py` | Verificar firmas Ed25519. Python puro (RFC 8032). Sólo `verificar()`, no firma. | Sí |
+| `mitienda/licencia.py` | **Módulo puro.** Analiza y valida el texto de una licencia. Sin disco, sin red, sin reloj propio. | Sí |
+| `mitienda/maquina.py` | Calcula el código de máquina de esta computadora. | Sí |
+| `mitienda/almacen_licencia.py` | Lee `licencia.lic`, lee y escribe la marca anti-reloj. | Sí |
+| `mitienda/estado_licencia.py` | Guarda el veredicto del arranque, como `sesion.py` guarda el usuario. | Sí |
 | `herramientas/generar_licencia.py` | Emite licencias con la llave privada. | **No.** Excluido del `.spec`. |
 
 El diseño respeta el patrón que ya sigue el proyecto: la aritmética y las reglas
@@ -82,7 +82,7 @@ Se genera **una sola vez** un par Ed25519:
 - **Privada** (32 bytes) → `C:\Users\Mirielys\Documents\Py\!Salva\llaves\mitienda_privada.key`.
   Fuera del repositorio. **Si se pierde, no se le puede renovar a ningún cliente
   nunca más.** Requiere un segundo respaldo en soporte físico distinto.
-- **Pública** (32 bytes) → constante en `lddl/licencia.py`. Que la vean los
+- **Pública** (32 bytes) → constante en `mitienda/licencia.py`. Que la vean los
   clientes es irrelevante: con ella se comprueba una firma, no se crea.
 
 Se usa Ed25519 y no RSA porque la firma ocupa 64 bytes en lugar de 256, y la
@@ -146,7 +146,7 @@ nombre con tilde y otro con eñe.
 
 ### Código de máquina
 
-`lddl/maquina.py` combina dos datos estables de Windows:
+`mitienda/maquina.py` combina dos datos estables de Windows:
 
 1. `MachineGuid`, del registro:
    `HKLM\SOFTWARE\Microsoft\Cryptography`, valor `MachineGuid`.
@@ -179,7 +179,7 @@ arrancar: un fallo al calcular la huella deja el programa en estado
 
 ### Verificación en el arranque
 
-En `lddl/api.py`, dentro del `lifespan` que ya existe (`arrancar`), justo
+En `mitienda/api.py`, dentro del `lifespan` que ya existe (`arrancar`), justo
 después de `verificar_y_crear_columnas()`:
 
 1. Calcular la huella de esta computadora.
@@ -329,7 +329,7 @@ Pantalla nueva `interfaz/src/PanelLicencia.jsx`, y una banda de aviso en
 - Cuando hay licencia activa: negocio, edición y fecha de vencimiento.
 
 El nombre del negocio pasa también al título de la ventana, junto a `NOMBRE_APP`
-de `lddl/__init__.py`. Es un detalle que personaliza el producto y que además
+de `mitienda/__init__.py`. Es un detalle que personaliza el producto y que además
 recuerda a diario de quién es la licencia.
 
 **Antes de escribir una línea de esta interfaz hay que mandarle al usuario un
@@ -370,7 +370,7 @@ Son unas pocas líneas y evita tener que tocar cada archivo de pruebas.
   generador dentro del `.exe`. El `.spec` está en `.gitignore` como `*.spec`,
   o sea que no viaja en el repositorio: el cambio se hace en la copia local y
   se deja anotado en `COMPILAR.md`.
-- La llave privada **nunca** vive dentro de `LDDL\`. Su sitio es `!Salva`, que
+- La llave privada **nunca** vive dentro de `MiTienda-Dev\`. Su sitio es `!Salva`, que
   está fuera del repositorio.
 - `.gitignore`: añadir `*.key`, `licencia.lic` y `herramientas/llaves/`.
 - La carpeta que va a una tienda pasa de **3 archivos a 4**:

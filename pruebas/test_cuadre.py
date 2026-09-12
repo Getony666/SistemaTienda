@@ -25,7 +25,7 @@ sys.path.insert(0, AQUI)
 
 import base  # noqa: E402  (tiene que ir después de tocar sys.path)
 
-from lddl import caja, cierres, cuadre, rutas, sesion, usuarios  # noqa: E402
+from mitienda import caja, cierres, cuadre, rutas, sesion, usuarios  # noqa: E402
 
 HOY = datetime.date.today().isoformat()
 MANANA = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
