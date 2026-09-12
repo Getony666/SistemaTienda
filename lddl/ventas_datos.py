@@ -5,7 +5,7 @@ import json
 
 from . import sesion
 from .caja import actualizar_fondo
-from .rutas import conectar_db, consulta
+from .rutas import conectar_db, consulta, quitar_tildes
 
 
 def _obtener_total_cobros(venta_id):
@@ -75,10 +75,12 @@ def _productos_por_venta(cursor, ids_ventas):
     return nombres
 
 
-def _producto_de_historial(cursor, detalles_json):
+def _producto_de_historial(nombres_de_producto, detalles_json):
     """Nombre del producto al que se refiere una fila del historial.
 
-    Unas acciones lo guardan literal y otras sólo dejan el id."""
+    Unas acciones lo guardan literal y otras sólo dejan el id. Antes esto
+    preguntaba a la base por cada fila; ahora recibe el catálogo entero ya
+    cargado, que son cuatro columnas y se lee de una vez."""
     try:
         detalles = json.loads(detalles_json) if detalles_json else {}
     except (ValueError, TypeError):
@@ -89,16 +91,105 @@ def _producto_de_historial(cursor, detalles_json):
         return detalles["nombre"]
     for clave in ("producto_id", "id"):
         if detalles.get(clave) is not None:
-            cursor.execute("SELECT nombre FROM productos WHERE id = ?", (detalles[clave],))
-            fila = cursor.fetchone()
-            if fila:
-                return fila[0]
+            try:
+                nombre = nombres_de_producto.get(int(detalles[clave]))
+            except (TypeError, ValueError):
+                nombre = None
+            if nombre:
+                return nombre
     return ""
 
 
-def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos", producto_id=None):
+def _nombres_de_producto(cursor):
+    """Todo el catálogo como {id: nombre}, para no preguntar fila por fila."""
+    return {fila[0]: fila[1] for fila in cursor.execute("SELECT id, nombre FROM productos")}
+
+
+def _abonos_por_venta(cursor):
+    """Cuánto lleva cobrado cada deuda y en cuántas veces: {venta_id: (total, veces)}.
+
+    De una sola consulta, porque en una tienda con meses de fiado preguntar
+    deuda por deuda son cientos de viajes a la base para pintar una pantalla.
+    """
+    filas = cursor.execute(
+        "SELECT venta_id, SUM(monto_cup), COUNT(*) FROM cobros_deudas GROUP BY venta_id"
+    ).fetchall()
+    return {venta_id: (total or 0.0, veces) for venta_id, total, veces in filas}
+
+
+def _nombre_del_cliente(observaciones):
+    """El nombre que se apuntó al fiar, si es que la observación lo es.
+
+    Cada cobro parcial va pegando su propia línea a la observación de la venta
+    ("| Pago parcial de 220.00 CUP, saldo restante..."), así que en una deuda
+    con abonos ese campo ya no es el nombre de nadie: es un registro de pagos.
+    Cuando lleva esa marca no sirve para encabezar la fila.
+    """
+    texto = (observaciones or "").strip()
+    if not texto or texto.startswith("|") or "Pago parcial de" in texto:
+        return ""
+    return texto
+
+
+def _plata(monto):
+    """Un número de dinero como se lee en la tienda: 42 000.00, no 42000.0."""
+    return f"{monto:,.2f}".replace(",", " ")
+
+
+def _cuenta_articulos(cursor, ids_ventas):
+    """Cuántos artículos se llevó cada venta, sumando cantidades."""
+    cuentas = {}
+    for inicio in range(0, len(ids_ventas), 400):
+        lote = ids_ventas[inicio:inicio + 400]
+        marcadores = ",".join("?" * len(lote))
+        cursor.execute(f"""SELECT venta_id, SUM(cantidad) FROM detalles_venta
+                           WHERE venta_id IN ({marcadores}) GROUP BY venta_id""", lote)
+        for venta_id, cantidad in cursor.fetchall():
+            cuentas[venta_id] = cantidad or 0
+    return cuentas
+
+
+def _coincide_la_busqueda(registro, buscado):
+    """¿Este registro tiene en algún lado el texto que se buscó?
+
+    Mira el concepto, el producto, las observaciones y el usuario, sin tildes
+    ni mayúsculas: quien teclea "mariela" en la caja no va a poner el acento.
+    """
+    if not buscado:
+        return True
+    for clave in ("concepto", "subconcepto", "producto", "observaciones", "usuario", "tipo"):
+        if buscado in quitar_tildes(registro.get(clave) or ""):
+            return True
+    return False
+
+
+def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos", producto_id=None,
+                   buscar=None, filtro_usuario=None, limite=None, desde=0):
+    """Todo lo que pasó en la tienda, junto y ordenado de lo nuevo a lo viejo.
+
+    Cada registro trae, además de sus datos, lo que la pantalla necesita para
+    pintarlo sin volver a preguntar: si el dinero entra o sale (`signo`), el
+    texto de la columna Concepto y su línea de abajo, y en las deudas cuánto
+    va abonado.
+
+    `limite` y `desde` recortan al final, cuando la lista ya está ordenada:
+    los bloques vienen de tablas distintas y no hay forma de ordenarlos entre
+    sí sin juntarlos antes. Lo que se ahorra es lo caro de verdad -mandar
+    miles de registros por HTTP y pintarlos-, no la lectura de SQLite, que es
+    un archivo local. Sin `limite`, devuelve todo, como siempre.
+    """
+    buscado = quitar_tildes(buscar) if buscar else ""
     with consulta() as (conexion, cursor):
         resultados = []
+        nombres_de_producto = _nombres_de_producto(cursor)
+        abonos = _abonos_por_venta(cursor)
+
+        # Si se filtra por método de pago, lo que no tiene método de pago no
+        # puede salir: una merma o un cambio de ficha no se cobraron de
+        # ninguna manera. Antes se colaban, y el filtro parecía roto.
+        filtrando_metodo = filtro_metodo not in (None, "", "todos")
+        # Los movimientos de caja y los cambios de divisa siempre son efectivo.
+        efectivo_puro = filtro_metodo == "efectivo"
 
         # El alta de producto sólo deja el nombre en el historial, así que hace
         # falta para poder cruzarla con el producto elegido.
@@ -112,7 +203,8 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
         if filtro_tipo in ("todos", "ventas", "deudas", "mensajeria"):
             sentencia = '''
                 SELECT v.id, v.fecha, v.total, v.metodo_pago, v.cancelada, v.es_deuda, v.pagada, v.saldo_pendiente,
-                       v.metodo_pago_real, v.observaciones, v.moneda_pago, v.tasa_cambio, v.pago_texto, v.vuelto_texto, v.es_mensajeria, v.usuario
+                       v.metodo_pago_real, v.observaciones, v.moneda_pago, v.tasa_cambio, v.pago_texto, v.vuelto_texto, v.es_mensajeria, v.usuario,
+                       v.utilidad
                 FROM ventas v
                 WHERE v.metodo_pago != 'Salida'
             '''
@@ -120,6 +212,9 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             if filtro_fecha:
                 sentencia += " AND v.fecha LIKE ?"
                 params.append(f"{filtro_fecha}%")
+            if filtro_usuario:
+                sentencia += " AND v.usuario = ?"
+                params.append(filtro_usuario)
             if filtro_metodo == "efectivo":
                 sentencia += " AND v.metodo_pago_real = 'Efectivo'"
             elif filtro_metodo == "transferencia":
@@ -141,11 +236,14 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             sentencia += " ORDER BY v.fecha DESC"
             cursor.execute(sentencia, params)
             filas_ventas = cursor.fetchall()
-            productos_de_venta = _productos_por_venta(cursor, [f[0] for f in filas_ventas]) if filas_ventas else {}
+            ids_ventas = [f[0] for f in filas_ventas]
+            productos_de_venta = _productos_por_venta(cursor, ids_ventas) if filas_ventas else {}
+            articulos_de_venta = _cuenta_articulos(cursor, ids_ventas) if filas_ventas else {}
             for row in filas_ventas:
                 (id_reg, fecha, total, metodo_pago, cancelada, es_deuda, pagada,
                  saldo_pendiente, metodo_pago_real, observaciones, moneda_pago,
-                 tasa_cambio, pago_texto, vuelto_texto, es_mensajeria, usuario) = row
+                 tasa_cambio, pago_texto, vuelto_texto, es_mensajeria, usuario,
+                 utilidad) = row
                 if cancelada:
                     continue
                 if es_deuda and pagada == 0:
@@ -173,6 +271,39 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     obs = observaciones if observaciones else ""
                     metodo_pago_mostrar = metodo_pago_real if metodo_pago_real else metodo_pago
                     detalle_extra = {"es_deuda": es_deuda, "pagada": pagada, "saldo_pendiente": saldo_pendiente, "total": total, "moneda_pago": moneda_pago, "tasa_cambio": tasa_cambio, "metodo_pago_real": metodo_pago_real, "pago_texto": pago_texto, "vuelto_texto": vuelto_texto, "es_mensajeria": es_mensajeria}
+                nombres = productos_de_venta.get(id_reg, [])
+                texto_productos = _texto_productos(nombres)
+                cuantos = articulos_de_venta.get(id_reg, 0)
+                articulos = f"{cuantos:g} artículo{'s' if cuantos != 1 else ''}" if cuantos else ""
+
+                if tipo == "Deuda":
+                    abonado, veces = abonos.get(id_reg, (0.0, 0))
+                    # Quien fía apunta el nombre del cliente en la observación.
+                    # Ese nombre es lo que se busca en esta pantalla, así que
+                    # manda sobre la lista de productos.
+                    concepto = _nombre_del_cliente(obs) or texto_productos
+                    cuenta = (f"{veces} abono{'s' if veces != 1 else ''}"
+                              if veces else "sin abonos")
+                    subconcepto = (f"Debe {_plata(monto)} de {_plata(total)} · {cuenta}")
+                    signo = "neutro"
+                    utilidad_reg = None
+                    total_deuda = total
+                else:
+                    abonado, veces = abonos.get(id_reg, (0.0, 0))
+                    concepto = texto_productos
+                    partes = [p for p in (obs, articulos) if p]
+                    subconcepto = " · ".join(partes)
+                    if moneda != "CUP" and tasa_cambio:
+                        # En divisa, el monto de la columna va en USD o EUR; sin
+                        # esto no habría forma de saber cuántos pesos fueron.
+                        subconcepto = " · ".join(
+                            [p for p in (subconcepto,
+                                         f"{_plata(total)} CUP · tasa {tasa_cambio:g}") if p])
+                    signo = "entra"
+                    utilidad_reg = utilidad if utilidad else None
+                    total_deuda = None
+                    abonado = abonado if veces else None
+
                 resultados.append({
                     "tipo": tipo,
                     "id": id_reg,
@@ -180,18 +311,25 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "monto": monto,
                     "moneda": moneda,
                     "metodo_pago": metodo_pago_mostrar,
-                    "producto": _texto_productos(productos_de_venta.get(id_reg, [])),
+                    "producto": texto_productos,
                     "observaciones": obs,
                     # Sube al primer nivel para que la tabla del historial pueda
                     # pintar su columna sin abrir el detalle de cada fila.
                     "es_mensajeria": 1 if es_mensajeria else 0,
                     "usuario": usuario or "",
+                    "signo": signo,
+                    "concepto": concepto,
+                    "subconcepto": subconcepto,
+                    "utilidad": utilidad_reg,
+                    "total_deuda": total_deuda,
+                    "abonado": abonado if tipo == "Deuda" else None,
                     "detalle_extra": detalle_extra
                 })
 
         # Los cambios de divisa y los movimientos de caja no tienen producto:
         # si se está filtrando por uno, no pintan nada en la lista.
-        if filtro_tipo in ("todos", "cambio") and producto_id is None:
+        if (filtro_tipo in ("todos", "cambio") and producto_id is None
+                and (not filtrando_metodo or efectivo_puro)):
             sentencia = '''
                 SELECT id, fecha, tipo, moneda, cantidad, tasa, monto_cup, observaciones, usuario
                 FROM operaciones_cambio
@@ -201,10 +339,14 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             if filtro_fecha:
                 sentencia += " AND fecha LIKE ?"
                 params.append(f"{filtro_fecha}%")
+            if filtro_usuario:
+                sentencia += " AND usuario = ?"
+                params.append(filtro_usuario)
             sentencia += " ORDER BY fecha DESC"
             cursor.execute(sentencia, params)
             for row in cursor.fetchall():
                 id_reg, fecha, tipo_op, moneda, cantidad, tasa, monto_cup, obs, usuario = row
+                comprando = str(tipo_op or "").lower() == "compra"
                 resultados.append({
                     # Igual que en los movimientos de efectivo, este texto es el
                     # que reconocen el panel de detalle y el borrado.
@@ -217,19 +359,38 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "producto": "",
                     "observaciones": f"Monto CUP: {monto_cup:.2f}",
                     "usuario": usuario or "",
+                    # El signo mira la divisa, no los pesos: comprar divisa la
+                    # mete al fondo aunque saque CUP de la caja.
+                    "signo": "entra" if comprando else "sale",
+                    "concepto": f"{_plata(cantidad)} {moneda} a {_plata(tasa)}",
+                    "subconcepto": (f"Salieron {_plata(monto_cup)} CUP de la caja" if comprando
+                                    else f"Entraron {_plata(monto_cup)} CUP a la caja"),
+                    "utilidad": None,
+                    "total_deuda": None,
+                    "abonado": None,
                     "detalle_extra": {"tipo_op": tipo_op, "tasa": tasa, "moneda_original": moneda, "cantidad": cantidad, "monto_cup": monto_cup, "obs": obs}
                 })
 
-        if filtro_tipo in ("todos", "entrada_efectivo") and producto_id is None:
-            sentencia = '''
+        # Las dos tablas de caja se leen igual; lo único que cambia es hacia
+        # dónde va el dinero.
+        for clave_filtro, tabla, nombre_tipo, signo_caja in (
+                ("entrada_efectivo", "entradas_efectivo", "Entrada de efectivo", "entra"),
+                ("salida_efectivo", "salidas_efectivo", "Salida de efectivo", "sale")):
+            if (filtro_tipo not in ("todos", clave_filtro) or producto_id is not None
+                    or (filtrando_metodo and not efectivo_puro)):
+                continue
+            sentencia = f'''
                 SELECT id, fecha, moneda, monto, descripcion, usuario
-                FROM entradas_efectivo
+                FROM {tabla}
                 WHERE 1=1
             '''
             params = []
             if filtro_fecha:
                 sentencia += " AND fecha LIKE ?"
                 params.append(f"{filtro_fecha}%")
+            if filtro_usuario:
+                sentencia += " AND usuario = ?"
+                params.append(filtro_usuario)
             sentencia += " ORDER BY fecha DESC"
             cursor.execute(sentencia, params)
             for row in cursor.fetchall():
@@ -237,7 +398,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                 resultados.append({
                     # Este texto es el que leen el panel de detalle y el borrado
                     # del historial, que lo esperan escrito así.
-                    "tipo": "Entrada de efectivo",
+                    "tipo": nombre_tipo,
                     "id": id_reg,
                     "fecha": fecha,
                     "monto": monto,
@@ -246,40 +407,21 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "producto": "",
                     "observaciones": desc or "",
                     "usuario": usuario or "",
-                    "detalle_extra": {}
-                })
-
-        if filtro_tipo in ("todos", "salida_efectivo") and producto_id is None:
-            sentencia = '''
-                SELECT id, fecha, moneda, monto, descripcion, usuario
-                FROM salidas_efectivo
-                WHERE 1=1
-            '''
-            params = []
-            if filtro_fecha:
-                sentencia += " AND fecha LIKE ?"
-                params.append(f"{filtro_fecha}%")
-            sentencia += " ORDER BY fecha DESC"
-            cursor.execute(sentencia, params)
-            for row in cursor.fetchall():
-                id_reg, fecha, moneda, monto, desc, usuario = row
-                resultados.append({
-                    "tipo": "Salida de efectivo",
-                    "id": id_reg,
-                    "fecha": fecha,
-                    "monto": monto,
-                    "moneda": moneda,
-                    "metodo_pago": "Efectivo",
-                    "producto": "",
-                    "observaciones": desc or "",
-                    "usuario": usuario or "",
+                    "signo": signo_caja,
+                    "concepto": desc or nombre_tipo,
+                    "subconcepto": "",
+                    "utilidad": None,
+                    "total_deuda": None,
+                    "abonado": None,
                     "detalle_extra": {}
                 })
 
         # ===== SECCIÓN MODIFICADA: MANEJO DE MERMAS =====
         # Las mermas ahora se obtienen directamente de salidas_inventario
         # y se incluyen en "todos" y "merma"
-        if filtro_tipo in ("todos", "merma"):
+        # Una merma no se cobró de ninguna forma, así que en cuanto se filtra
+        # por método de pago deja de tener sentido que aparezca.
+        if filtro_tipo in ("todos", "merma") and not filtrando_metodo:
             consulta_salidas = '''
                 SELECT s.id, s.fecha, p.nombre, s.cantidad, s.precio_costo, s.motivo, s.usuario
                 FROM salidas_inventario s
@@ -290,6 +432,9 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             if filtro_fecha:
                 consulta_salidas += " AND s.fecha LIKE ?"
                 params_salidas.append(f"{filtro_fecha}%")
+            if filtro_usuario:
+                consulta_salidas += " AND s.usuario = ?"
+                params_salidas.append(filtro_usuario)
             if producto_id is not None:
                 consulta_salidas += " AND s.producto_id = ?"
                 params_salidas.append(producto_id)
@@ -307,6 +452,12 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "producto": nombre,
                     "observaciones": f"Cantidad: {cantidad} - {motivo}",
                     "usuario": usuario or "",
+                    "signo": "sale",
+                    "concepto": f"{nombre} × {cantidad:g}",
+                    "subconcepto": motivo or "",
+                    "utilidad": None,
+                    "total_deuda": None,
+                    "abonado": None,
                     "detalle_extra": {"origen": "salidas_inventario", "producto": nombre, "cantidad": cantidad}
                 })
 
@@ -316,7 +467,8 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
     
         # "entrada_producto" es el valor que manda el radiobutton del panel; sin
         # él este bloque no se ejecutaba y ese filtro salía siempre vacío.
-        if filtro_tipo in ("todos", "salidas", "entrada_producto") + tuple(tipos_historial):
+        if (filtro_tipo in ("todos", "salidas", "entrada_producto") + tuple(tipos_historial)
+                and not filtrando_metodo):
             consulta_hist = '''
                 SELECT id, fecha, tipo_accion, descripcion, detalles, usuario
                 FROM historial
@@ -326,6 +478,9 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
             if filtro_fecha:
                 consulta_hist += " AND fecha LIKE ?"
                 params_hist.append(f"{filtro_fecha}%")
+            if filtro_usuario:
+                consulta_hist += " AND usuario = ?"
+                params_hist.append(filtro_usuario)
             if filtro_tipo == "salidas":
                 consulta_hist += " AND tipo_accion = 'Salida de Producto'"
             elif filtro_tipo == "entrada_producto":
@@ -389,6 +544,7 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                 elif tipo_accion == "Eliminación de Producto":
                     observaciones = desc
                 
+                nombre_producto = _producto_de_historial(nombres_de_producto, detalles_json)
                 resultados.append({
                     "tipo": tipo_accion,
                     "id": id_reg,
@@ -396,17 +552,34 @@ def obtener_ventas(filtro_fecha=None, filtro_metodo="todos", filtro_tipo="todos"
                     "monto": monto,
                     "moneda": moneda,
                     "metodo_pago": metodo_pago,
-                    "producto": _producto_de_historial(cursor, detalles_json),
+                    "producto": nombre_producto,
                     "observaciones": observaciones,
                     "usuario": usuario or "",
+                    # Sacar mercancía resta; dar de alta o corregir una ficha no
+                    # mueve un peso, y pintarlo en rojo sería mentir.
+                    "signo": "sale" if tipo_accion == "Salida de Producto" else "neutro",
+                    "concepto": nombre_producto or desc or tipo_accion,
+                    "subconcepto": observaciones if observaciones != nombre_producto else "",
+                    "utilidad": None,
+                    "total_deuda": None,
+                    "abonado": None,
                     "detalle_extra": detalle_extra
                 })
+
+        if buscado:
+            resultados = [r for r in resultados if _coincide_la_busqueda(r, buscado)]
 
         # Cada bloque viene ordenado por su cuenta, así que la lista completa
         # queda agrupada por tipo. Se reordena entera para que el historial se
         # lea de lo más reciente a lo más antiguo. Las fechas son
         # 'YYYY-MM-DD HH:MM:SS', que ordena igual como texto que como fecha.
         resultados.sort(key=lambda reg: reg["fecha"] or "", reverse=True)
+
+        # El recorte va aquí, con la lista ya ordenada: pedir "los 50 más
+        # recientes" no tendría sentido antes de saber cuáles son.
+        if limite is not None:
+            arranque = max(0, desde or 0)
+            resultados = resultados[arranque:arranque + limite]
 
         return resultados
 

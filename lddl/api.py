@@ -42,14 +42,18 @@ from .caja import (
     cargar_fondo_por_fecha,
     guardar_fondo_por_fecha,
     obtener_efectivo_disponible_cup,
+    obtener_movimientos_del_dia,
     obtener_resumen_caja,
     obtener_saldo_divisas,
     registrar_entrada_efectivo,
     registrar_operacion_cambio,
     registrar_salida_efectivo,
 )
+from .cierres import cerrar_caja, obtener_cierre, reabrir_caja, ultimos_cierres
+from .cuadre import armar_cuadre
 from .rutas import consulta
 from .historial import revertir_registro
+from .historial_vista import detalle_de_registro, resumen_historial
 from .inventario import (
     registrar_merma,
     registrar_merma_de_carrito,
@@ -243,24 +247,87 @@ def listar_ventas(
     metodo: str = Query("todos", description="todos, efectivo, transferencia o mixto"),
     tipo: str = Query("todos", description="todos, ventas, deudas, mensajeria, cambio, merma..."),
     producto_id: int = Query(None, description="Sólo los registros de este producto"),
+    buscar: str = Query(None, description="Texto libre: cliente, producto, observación o usuario"),
+    usuario: str = Query(None, description="Sólo lo que registró esta persona"),
+    limite: int = Query(None, ge=1, le=2000, description="Cuántos devolver; sin él, todos"),
+    desde: int = Query(0, ge=0, description="Cuántos saltar antes de empezar a contar"),
 ):
-    """Historial de ventas y movimientos, con los mismos filtros que la app."""
+    """Historial de ventas y movimientos, con los mismos filtros que la app.
+
+    Sin `limite` devuelve el historial entero, que es lo que esperaban las
+    pantallas de siempre. Con él, la lista se recorta ya ordenada, para no
+    mandar por el cable miles de registros que nadie va a mirar.
+    """
     if fecha is not None:
         _validar_fecha(fecha)
     return obtener_ventas(filtro_fecha=fecha, filtro_metodo=metodo,
-                          filtro_tipo=tipo, producto_id=producto_id)
+                          filtro_tipo=tipo, producto_id=producto_id,
+                          buscar=buscar, filtro_usuario=usuario,
+                          limite=limite, desde=desde)
 
 
 # ---------------------------------------------------------------- corte
 @app.get("/corte/{fecha}", tags=["caja"])
 def corte_de_caja(fecha: str = Path(..., description="AAAA-MM-DD")):
-    """Resumen del día: lo mismo que muestra la pestaña de Corte de Caja."""
+    """Resumen del día: lo mismo que muestra la pestaña de Corte de Caja.
+
+    `cuadre` trae, por cada moneda, lo que debería haber en la gaveta y la
+    cadena de sumas y restas de la que sale esa cifra. `cierre` es la foto de
+    la noche, o None si ese día todavía no se ha cerrado.
+    """
     _validar_fecha(fecha)
     resumen = obtener_resumen_caja(fecha)
     resumen["fecha"] = fecha
     resumen["fondo_registrado"] = cargar_fondo_por_fecha(fecha)
     resumen["saldo_divisas"] = obtener_saldo_divisas(fecha)
+    resumen["cuadre"] = armar_cuadre(fecha)
+    resumen["cierre"] = obtener_cierre(fecha)
     return resumen
+
+
+@app.get("/caja/movimientos/{fecha}", tags=["caja"])
+def movimientos_del_dia(fecha: str = Path(..., description="AAAA-MM-DD")):
+    """Entradas, salidas y cambios de divisa de ese día."""
+    _validar_fecha(fecha)
+    return obtener_movimientos_del_dia(fecha)
+
+
+# --------------------------------------------------------------- cierres
+
+class CierreEntrante(BaseModel):
+    """Lo que la persona contó en la gaveta, moneda por moneda.
+
+    Lo esperado no se manda: lo calcula el servidor al cerrar.
+    """
+
+    CUP: float = Field(0.0, ge=0)
+    USD: float = Field(0.0, ge=0)
+    EUR: float = Field(0.0, ge=0)
+    nota: str = ""
+
+
+@app.get("/caja/cierres", tags=["caja"])
+def listar_cierres(limite: int = Query(10, ge=1, le=200)):
+    """Los últimos días cerrados, del más reciente al más viejo."""
+    return ultimos_cierres(limite)
+
+
+@app.post("/caja/cierres/{fecha}", tags=["caja"], status_code=201,
+          dependencies=[exige("cerrar_caja"), exige_licencia()])
+def cerrar_el_dia(fecha: str, cuerpo: CierreEntrante):
+    """Guarda el cierre del día. No traba nada: si luego hay ventas, se reabre."""
+    _validar_fecha(fecha)
+    datos = cuerpo.model_dump()
+    nota = datos.pop("nota", "")
+    return _resultado(cerrar_caja(fecha, datos, nota))
+
+
+@app.delete("/caja/cierres/{fecha}", tags=["caja"],
+            dependencies=[exige("cerrar_caja"), exige_licencia()])
+def reabrir_el_dia(fecha: str):
+    """Borra el cierre de ese día para volver a contar."""
+    _validar_fecha(fecha)
+    return _resultado(reabrir_caja(fecha))
 
 
 # --------------------------------------------------------------------- cobro
@@ -673,6 +740,42 @@ def crear_operacion_cambio(operacion: CambioEntrante):
 
 
 # -------------------------------------------------------------- historial
+
+@app.get("/historial/resumen", tags=["historial"])
+def resumen_del_historial(
+    fecha: str = Query(None, description="AAAA-MM-DD; sin ella, todas"),
+    metodo: str = Query("todos", description="todos, efectivo, transferencia o mixto"),
+    tipo: str = Query("todos", description="todos, ventas, deudas, mensajeria, cambio, merma..."),
+    producto_id: int = Query(None, description="Sólo los registros de este producto"),
+    buscar: str = Query(None, description="Texto libre: cliente, producto, observación o usuario"),
+    usuario: str = Query(None, description="Sólo lo que registró esta persona"),
+):
+    """Cuánto entró, cuánto salió y cuánto falta por cobrar, con estos filtros.
+
+    Resume el filtro entero y no la página que se esté viendo: quien filtra por
+    un día quiere el total del día, no el de las cincuenta líneas que le caben.
+    """
+    if fecha is not None:
+        _validar_fecha(fecha)
+    return resumen_historial(filtro_fecha=fecha, filtro_metodo=metodo, filtro_tipo=tipo,
+                             producto_id=producto_id, buscar=buscar, filtro_usuario=usuario)
+
+
+@app.get("/historial/detalle", tags=["historial"])
+def detalle_del_historial(
+    tipo: str = Query(..., description="Tipo del registro, tal como lo devuelve /ventas"),
+    id: int = Query(..., description="Identificador del registro dentro de su tabla"),
+):
+    """Todo lo que se sabe de un registro, ya escrito para leerse.
+
+    Se pide de uno en uno, al seleccionar una fila: así las líneas de cada
+    venta -lo que más pesa- sólo se leen de la que se está mirando.
+    """
+    detalle = detalle_de_registro(tipo, id)
+    if detalle is None:
+        raise HTTPException(status_code=404, detail="Ese registro ya no está")
+    return detalle
+
 
 @app.delete("/historial/{registro_id}", tags=["historial"], dependencies=[exige("eliminar_historial"), exige_licencia()])
 def revertir_del_historial(

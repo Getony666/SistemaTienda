@@ -35,6 +35,7 @@ PERMISOS = (
     ("salida_efectivo", "Registrar salidas de efectivo"),
     ("fondo_caja", "Fijar el fondo de caja"),
     ("ver_corte", "Ver el corte de caja"),
+    ("cerrar_caja", "Cerrar la caja del día"),
     ("ver_historial", "Ver el historial"),
     ("crear_producto", "Crear productos"),
     ("actualizar_producto", "Actualizar productos"),
@@ -58,6 +59,9 @@ POR_DEFECTO = {
     EMPLEADO: {
         "vender", "cobrar_deudas", "salida_inventario", "merma",
         "cambio_divisa", "ver_corte", "ver_historial",
+        # Quien cuenta el dinero por la noche es ella, así que es ella quien
+        # cierra. Poner el fondo por la mañana sigue siendo de los otros dos.
+        "cerrar_caja",
     },
 }
 

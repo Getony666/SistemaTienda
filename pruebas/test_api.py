@@ -157,6 +157,8 @@ RUTAS_QUE_ESCRIBEN = {
     ("POST", "/caja/entradas"),
     ("POST", "/caja/salidas"),
     ("PUT", "/caja/fondo/{fecha}"),
+    ("POST", "/caja/cierres/{fecha}"),
+    ("DELETE", "/caja/cierres/{fecha}"),
     ("POST", "/cambio"),
     ("DELETE", "/historial/{registro_id}"),
     # Usuarios y permisos. /sesion no escribe en la base -la sesión vive en

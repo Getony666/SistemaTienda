@@ -526,3 +526,81 @@ def registrar_operacion_cambio(tipo, moneda, cantidad, tasa, observaciones=""):
         conn.rollback()
         conn.close()
         return False, f"Error al registrar operación: {str(e)}"
+
+
+# ----------------------------------------------------- movimientos del día
+
+# Dos clases de fila de entradas_efectivo no son movimientos por sí mismas,
+# sino el rastro de algo que ya se cuenta por otro lado: el cobro de una deuda
+# -que vive en cobros_deudas- y la venta de divisa -que vive en
+# operaciones_cambio-. Se reconocen por la descripción porque no llevan
+# ninguna otra marca; las escribe cada una un único sitio del programa.
+RASTRO_DE_COBRO = "Pago de deuda #%"
+RASTRO_DE_CAMBIO = "Venta de % (tasa %"
+
+
+def obtener_movimientos_del_dia(fecha):
+    """Entradas, salidas y cambios de divisa de un día, del más nuevo al más viejo.
+
+    Es la lista que acompaña al cuadre en la pantalla de Corte, y deja fuera
+    exactamente las mismas filas que la cadena de lddl.cuadre: si una suma
+    allí, aparece aquí, y al revés.
+
+    Una operación de cambio sale como una sola línea con sus dos lados -lo que
+    entró y lo que salió-, no como dos apuntes sueltos.
+    """
+    fecha_like = f"{fecha}%"
+    movimientos = []
+    with consulta() as (conexion, cursor):
+        cursor.execute('''
+            SELECT id, fecha, moneda, monto, descripcion, usuario
+            FROM entradas_efectivo
+            WHERE fecha LIKE ?
+              AND COALESCE(descripcion, '') NOT LIKE ?
+              AND COALESCE(descripcion, '') NOT LIKE ?
+        ''', (fecha_like, RASTRO_DE_COBRO, RASTRO_DE_CAMBIO))
+        for id_mov, cuando, moneda, monto, descripcion, usuario in cursor.fetchall():
+            movimientos.append({
+                "id": id_mov, "fecha": cuando, "tipo": "Entrada",
+                "concepto": descripcion or "Sin descripción",
+                "moneda": moneda, "monto": round(monto or 0.0, 2),
+                "moneda_2": None, "monto_2": 0.0,
+                "usuario": usuario or "",
+            })
+
+        cursor.execute('''
+            SELECT id, fecha, moneda, monto, descripcion, usuario
+            FROM salidas_efectivo
+            WHERE fecha LIKE ?
+        ''', (fecha_like,))
+        for id_mov, cuando, moneda, monto, descripcion, usuario in cursor.fetchall():
+            movimientos.append({
+                "id": id_mov, "fecha": cuando, "tipo": "Salida",
+                "concepto": descripcion or "Sin descripción",
+                "moneda": moneda, "monto": -round(monto or 0.0, 2),
+                "moneda_2": None, "monto_2": 0.0,
+                "usuario": usuario or "",
+            })
+
+        cursor.execute('''
+            SELECT id, fecha, tipo, moneda, cantidad, tasa, monto_cup, usuario
+            FROM operaciones_cambio
+            WHERE fecha LIKE ?
+        ''', (fecha_like,))
+        for id_mov, cuando, tipo, moneda, cantidad, tasa, monto_cup, usuario in cursor.fetchall():
+            es_compra = tipo == "compra"
+            movimientos.append({
+                "id": id_mov,
+                "fecha": cuando,
+                "tipo": "Compra de divisa" if es_compra else "Venta de divisa",
+                "concepto": (f"{'Compra' if es_compra else 'Venta'} de "
+                             f"{cantidad:.2f} {moneda} a tasa {tasa:.2f}"),
+                "moneda": "CUP",
+                "monto": round(-monto_cup if es_compra else monto_cup, 2),
+                "moneda_2": moneda,
+                "monto_2": round(cantidad if es_compra else -cantidad, 2),
+                "usuario": usuario or "",
+            })
+
+    movimientos.sort(key=lambda m: (m["fecha"] or "", m["id"]), reverse=True)
+    return movimientos

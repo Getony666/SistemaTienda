@@ -449,55 +449,415 @@ tr.apagado td { opacity: .5; }
 /* ------------------------------------------------------ historial */
 
 .desplazable.alto { max-height: 340px; }
-.recortado { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tabla tr.deuda td { color: var(--rojo); }
 .cifra-linea {
   margin: 0; font-size: 17px; font-weight: 700;
   color: var(--verde-oscuro); font-variant-numeric: tabular-nums;
 }
 
+/* El detalle pasó de debajo de la tabla a su derecha. Antes la tabla se
+   quedaba en 340 px con media pantalla en blanco debajo, y al seleccionar
+   una fila la tabla se estrechaba y las filas cambiaban de alto: todo
+   saltaba. Así la tabla ocupa lo que hay y el ancho muerto de la derecha
+   se aprovecha. */
+.panel-historial { display: flex; gap: 12px; align-items: flex-start; min-height: 0; }
+.panel-historial > .lista { flex: 1; min-width: 0; }
+.panel-historial > .detalle { flex: 0 1 330px; min-width: 265px; }
+
+/* Las tiendas trabajan en pantallas de 1366 y a veces menos. Por debajo de
+   eso el detalle al lado deja la tabla tan estrecha que hay que moverla de
+   lado para leer el usuario, así que se pone debajo, como estaba antes. */
+@media (max-width: 1180px) {
+  .panel-historial { flex-direction: column; }
+  .panel-historial > .lista,
+  .panel-historial > .detalle { width: 100%; flex: none; }
+  .historial .desplazable.alto { max-height: calc(100vh - 480px); }
+}
+
+/* Lo que queda de pantalla tras la barra, los filtros y los totales. */
+.historial .desplazable.alto { max-height: calc(100vh - 355px); min-height: 220px; }
+
+.buscador { flex: 1; min-width: 190px; }
+
+/* --- la barra de totales del filtro que está puesto --- */
+
+.resumen-historial {
+  display: flex; border: 1px solid var(--borde); border-radius: var(--radio);
+  overflow: hidden; background: var(--tarjeta-solida); box-shadow: var(--sombra);
+}
+.resumen-historial > div {
+  flex: 1; padding: 8px 14px; border-right: 1px solid var(--borde); min-width: 0;
+}
+.resumen-historial > div:last-child { border-right: 0; }
+.resumen-historial .et {
+  font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--tenue); font-weight: 700;
+}
+.resumen-historial .ci {
+  font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;
+  margin-top: 2px; white-space: nowrap;
+}
+.resumen-historial .ci.entra { color: var(--verde-claro); }
+.resumen-historial .ci.sale { color: var(--rojo); }
+.resumen-historial .ci.debe { color: var(--ocre); }
+
+/* --- la tabla --- */
+
+.tabla.historial th { cursor: pointer; user-select: none; white-space: nowrap; }
+.tabla.historial th .flecha { opacity: .5; font-size: 9px; margin-left: 3px; }
+.tabla.historial td { padding: 6px 8px; vertical-align: middle; }
+.tabla.historial .col-fecha { width: 52px; }
+.tabla.historial .col-tipo { width: 108px; }
+.tabla.historial .col-monto { width: 124px; text-align: right; }
+.tabla.historial .col-metodo_pago { width: 92px; }
+.tabla.historial .col-usuario { width: 70px; }
+/* Sin esto la columna Concepto empuja a las demás y la tabla se sale por la
+   derecha: lo que sobra se recorta con puntos suspensivos, no se desborda. */
+.tabla.historial { table-layout: fixed; }
+.tabla.historial td { overflow: hidden; text-overflow: ellipsis; }
+
+/* Lo que se debe lleva una marca al filo de la fila. Antes se pintaba la
+   línea entera de rojo, pero ahora el tipo ya va en pastilla y el monto en
+   ocre: repetirlo tres veces convertía la tabla en un semáforo. */
+.tabla.historial tr.deuda td:first-child { box-shadow: inset 3px 0 0 var(--ocre); }
+
+.hora {
+  color: var(--suave); font-variant-numeric: tabular-nums;
+  white-space: nowrap; font-size: 12.5px;
+}
+.quien { color: var(--suave); font-size: 12.5px; white-space: nowrap; }
+.neutro { color: var(--tenue); }
+
+/* Cada día se abre con su fecha en palabras y lo que movió. Antes cada fila
+   repetía la fecha entera, que en una tienda es el mismo día ochenta veces. */
+.tabla.historial tr.dia td {
+  background: rgba(31, 90, 76, .055); padding: 5px 8px;
+  border-bottom: 1px solid var(--borde);
+}
+.tabla.historial tr.dia:hover td { background: rgba(31, 90, 76, .055); }
+.dia-t {
+  font-size: 11px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--verde-oscuro);
+}
+.dia-s {
+  float: right; font-size: 11.5px; color: var(--suave);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- el tipo, en pastilla de color --- */
+
+.tag {
+  display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+  border-radius: 20px; letter-spacing: .02em; white-space: nowrap;
+}
+.t-venta { background: rgba(46, 158, 107, .15); color: #1d7a52; }
+.t-deuda { background: rgba(196, 67, 46, .13); color: var(--rojo); }
+.t-caja { background: rgba(184, 123, 30, .15); color: #8f5f14; }
+.t-divisa { background: rgba(123, 79, 163, .14); color: var(--morado); }
+.t-merma { background: rgba(104, 121, 111, .16); color: #4c5b53; }
+.t-ficha { background: rgba(31, 90, 76, .09); color: var(--suave); }
+.moto { font-size: 12px; margin-left: 3px; }
+
+/* --- el dinero: de un vistazo se ve si entra o sale --- */
+
+.plata { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plata.entra { color: #1d7a52; }
+.plata.sale { color: var(--rojo); }
+.plata.deuda-monto { color: var(--ocre); }
+.mon { font-size: 11px; color: var(--tenue); font-weight: 500; margin-left: 3px; }
+
+/* --- la columna Concepto --- */
+
+.concepto { min-width: 0; }
+.concepto-t {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.concepto small {
+  display: block; color: var(--tenue); font-size: 11.5px; line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Cuánto lleva pagado de lo que debe, sin tener que abrir el detalle. */
+.barra {
+  height: 4px; border-radius: 3px; background: rgba(196, 67, 46, .18);
+  margin-top: 3px; width: 96px;
+}
+.barra i { display: block; height: 100%; border-radius: 3px; background: var(--verde-claro); }
+
+.pie-historial {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 9px; color: var(--tenue); font-size: 12.5px; gap: 10px;
+}
+
+/* --- el detalle, ya escrito en español --- */
+
+.panel-historial .detalle h3 { margin: 0 0 2px; font-size: 15px; }
+.panel-historial .detalle .sub {
+  color: var(--tenue); font-size: 12px; margin: 0 0 10px;
+}
+.panel-historial .detalle h4 {
+  margin: 13px 0 5px; font-size: 10.5px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--tenue); font-weight: 700;
+}
+.panel-historial .detalle .par {
+  display: flex; justify-content: space-between; gap: 10px; padding: 4px 0;
+  font-size: 13px; border-bottom: 1px solid rgba(31, 90, 76, .05);
+}
+.panel-historial .detalle .par span:first-child { color: var(--suave); }
+.panel-historial .detalle .par span:last-child {
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.v-verde { color: #1d7a52; font-weight: 600; }
+.v-rojo { color: var(--rojo); font-weight: 600; }
+.v-ocre { color: var(--ocre); font-weight: 600; }
+.tabla.lineas { font-size: 12.5px; }
+.tabla.lineas td { padding: 4px 6px; }
+.tabla.lineas tr.fuerte td { font-weight: 700; border-top: 1px solid var(--borde); }
+
 /* ---------------------------------------------------------- corte */
 
-.resumen { display: flex; flex-direction: column; gap: 8px; }
+/* Dos columnas de verdad, como Ventas: a la izquierda el cuadre -lo único
+   que es de verdad el corte-, a la derecha el contexto y los botones. Antes
+   iban las cuatro tarjetas apiladas en una columna y había que bajar para
+   llegar a lo que importa. */
+.cuerpo.corte { grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr); }
 
-.resumen-fila {
-  display: flex; align-items: center; gap: 12px;
-  background: rgba(255, 255, 255, .62);
+.estado-caja {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; border-radius: 999px; padding: 5px 12px;
+  white-space: nowrap;
+}
+.estado-caja.abierta {
+  background: rgba(46, 158, 107, .14); color: var(--verde-claro);
+  border: 1px solid rgba(46, 158, 107, .25);
+}
+.estado-caja.cerrada {
+  background: rgba(31, 90, 76, .10); color: var(--verde-oscuro);
+  border: 1px solid rgba(31, 90, 76, .20);
+}
+
+.unidad { color: var(--suave); font-size: 13px; }
+.acotacion {
+  font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--tenue);
+}
+
+/* Ni error ni acierto: algo que conviene mirar. */
+.aviso.ojo {
+  background: rgba(184, 123, 30, .10); color: #8A5A12;
+  border: 1px solid rgba(184, 123, 30, .28);
+}
+
+/* --- la rejilla de las tres monedas --- */
+
+.cuadre {
+  background: var(--tarjeta-solida);
   border: 1px solid var(--borde);
   border-radius: var(--radio);
-  padding: 12px 16px 12px 0;
   overflow: hidden;
+}
+
+.cuadre-cab, .cuadre-fila {
+  display: grid; grid-template-columns: 92px 1fr 1fr 1fr;
+}
+.cuadre-cab {
+  background: rgba(31, 90, 76, .03);
+  border-bottom: 1px solid var(--borde);
+}
+.cuadre-cab span {
+  font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--tenue); font-weight: 700; padding: 9px 14px;
+}
+.cuadre-cab span.n { text-align: right; }
+
+.cuadre-fila { align-items: center; border-bottom: 1px solid rgba(31, 90, 76, .07); }
+.cuadre-fila:last-child { border-bottom: 0; }
+/* El rojo va en la fila entera, no sólo en la cifra: un faltante se tiene
+   que ver desde el otro lado del mostrador. */
+.cuadre-fila.en-rojo { background: rgba(196, 67, 46, .05); }
+
+/* La moneda es un botón: pulsarla cambia la cadena de abajo. */
+.cuadre-moneda {
+  font: inherit; font-weight: 700; font-size: 14px; line-height: 1.2;
+  color: var(--verde-oscuro); background: transparent;
+  border: 0; border-left: 4px solid var(--verde-oscuro);
+  margin: 10px 0; padding: 0 14px; text-align: left; cursor: pointer;
+  transition: color var(--transicion);
+}
+.cuadre-moneda:hover { color: var(--verde-claro); }
+.cuadre-moneda.activa { text-decoration: underline; text-underline-offset: 3px; }
+.cuadre-fila.chica .cuadre-moneda { font-size: 13px; border-left-color: var(--verde); }
+
+.cuadre .cel { padding: 12px 14px; text-align: right; min-width: 0; }
+.cuadre .cifra {
+  font-size: 27px; font-weight: 700; color: var(--verde-oscuro);
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em; white-space: nowrap;
+}
+.cuadre-fila.chica .cifra { font-size: 19px; }
+
+.cuadre input.contado {
+  width: 100%; text-align: right; padding: 5px 10px;
+  font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--verde); background: #fff;
+  border: 1.5px solid rgba(46, 125, 107, .35);
+}
+.cuadre-fila.chica input.contado { font-size: 17px; }
+
+.diferencia {
+  display: block; white-space: nowrap;
+  font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.cuadre-fila.chica .diferencia { font-size: 18px; }
+.diferencia.cuadra { color: var(--verde-claro); }
+.diferencia.falta { color: var(--rojo); }
+.diferencia.sobra { color: var(--ocre); }
+.diferencia.sincontar {
+  color: var(--tenue); font-size: 13px; font-weight: 600; font-style: italic;
+}
+.cuadre-fila.chica .diferencia.sincontar { font-size: 12px; }
+.pie-diferencia { display: block; font-size: 11px; color: var(--tenue); margin-top: 1px; }
+
+.acciones-corte {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px;
+}
+.acciones-corte .apunte {
+  font-size: 12px; color: var(--tenue); margin-left: auto;
+  text-align: right; max-width: 330px; line-height: 1.4;
+}
+.boton.grande { padding: 12px 22px; font-size: 15px; }
+
+/* --- la cadena de la que sale la cifra --- */
+
+.pastilla.moneda[aria-pressed="true"] {
+  background: var(--verde-oscuro); border-color: var(--verde-oscuro);
+  box-shadow: 0 4px 12px -4px rgba(31, 90, 76, .5);
+}
+
+.cadena-linea {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; border-radius: 8px;
   transition: background var(--transicion);
 }
-.resumen-fila:hover { background: rgba(255, 255, 255, .85); }
-
-.resumen-fila .franja { width: 5px; align-self: stretch; border-radius: 3px 0 0 3px; }
-.resumen-fila .titulo { font-weight: 700; font-size: 13.5px; }
-.resumen-fila .cuenta { color: var(--tenue); font-size: 12.5px; }
-.resumen-fila .importe {
-  margin-left: auto; font-size: 18px; font-weight: 700;
-  font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+.cadena-linea:hover { background: rgba(255, 255, 255, .6); }
+.cadena-linea .signo {
+  width: 16px; text-align: center; font-weight: 700; font-size: 15px; color: var(--tenue);
 }
+.cadena-linea .titulo { font-size: 13.5px; font-weight: 600; }
+.cadena-linea .cuenta { color: var(--tenue); font-size: 12.5px; }
+.cadena-linea .importe {
+  margin-left: auto; font-weight: 700; font-size: 14.5px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cadena-linea.mas .signo, .cadena-linea.mas .importe { color: var(--verde-claro); }
+.cadena-linea.menos .signo, .cadena-linea.menos .importe { color: var(--rojo); }
+.cadena-linea.base .signo, .cadena-linea.base .importe { color: var(--suave); }
+.cadena-linea.suma { border-top: 1px solid var(--borde); margin-top: 6px; padding-top: 12px; }
+.cadena-linea.suma .titulo { font-size: 14px; font-weight: 700; color: var(--verde-oscuro); }
+.cadena-linea.suma .importe { font-size: 19px; color: var(--verde-oscuro); }
 
-.resumen-fila.grande { padding-top: 16px; padding-bottom: 16px; }
-.resumen-fila.grande .franja { width: 9px; }
-.resumen-fila.grande .importe { font-size: 25px; }
+/* --- los movimientos del día --- */
 
-.resumen-fila.verde .franja { background: var(--verde-claro); }
-.resumen-fila.verde .titulo, .resumen-fila.verde .importe { color: var(--verde-claro); }
-.resumen-fila.morado .franja { background: var(--morado); }
-.resumen-fila.morado .titulo, .resumen-fila.morado .importe { color: var(--morado); }
-.resumen-fila.ocre .franja { background: var(--ocre); }
-.resumen-fila.ocre .titulo, .resumen-fila.ocre .importe { color: var(--ocre); }
-.resumen-fila.naranja .franja { background: var(--naranja); }
-.resumen-fila.naranja .titulo, .resumen-fila.naranja .importe { color: var(--naranja); }
-.resumen-fila.teal .franja { background: var(--verde-oscuro); }
-.resumen-fila.teal .titulo, .resumen-fila.teal .importe { color: var(--verde-oscuro); }
-.resumen-fila.neutro .franja { background: var(--suave); }
-.resumen-fila.neutro .titulo, .resumen-fila.neutro .importe { color: var(--suave); }
-.resumen-fila.divisas .franja { background: var(--verde); }
-.resumen-fila.divisas .titulo, .resumen-fila.divisas .importe { color: var(--verde); }
-.resumen-fila.divisas .importe { font-size: 15px; }
+.tabla.movimientos { table-layout: fixed; }
+.tabla.movimientos td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabla.movimientos th:nth-child(1), .tabla.movimientos td:nth-child(1) { width: 50px; }
+.tabla.movimientos th:nth-child(2), .tabla.movimientos td:nth-child(2) { width: 118px; }
+.tabla.movimientos th:nth-child(4), .tabla.movimientos td:nth-child(4) { width: 132px; }
+.tabla.movimientos th:nth-child(5), .tabla.movimientos td:nth-child(5) { width: 74px; }
+
+.etiqueta-tipo {
+  font-size: 10.5px; font-weight: 700; border-radius: 999px;
+  padding: 2px 9px; white-space: nowrap;
+}
+.etiqueta-tipo.entrada { background: rgba(46, 158, 107, .14); color: var(--verde-claro); }
+.etiqueta-tipo.salida { background: rgba(196, 67, 46, .12); color: var(--rojo); }
+.etiqueta-tipo.cambio { background: rgba(123, 79, 163, .12); color: var(--morado); }
+
+.movimientos .entra { color: var(--verde-claro); font-weight: 700; }
+.movimientos .sale { color: var(--rojo); font-weight: 700; }
+/* El segundo lado de un cambio de divisa, bajo el primero y más pequeño. */
+.movimientos .segunda { display: block; font-size: 11.5px; font-weight: 600; opacity: .85; }
+
+/* --- el día en cifras (lo que NO es dinero en la gaveta) --- */
+
+.cifras-dia { display: flex; flex-direction: column; gap: 2px; }
+.cifra-fila {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; border-radius: 8px;
+  transition: background var(--transicion);
+}
+.cifra-fila:hover { background: rgba(255, 255, 255, .6); }
+.cifra-fila .punta { width: 4px; align-self: stretch; border-radius: 3px; }
+.cifra-fila .titulo { font-size: 13px; font-weight: 600; }
+.cifra-fila .cuenta { color: var(--tenue); font-size: 12px; }
+.cifra-fila .importe {
+  margin-left: auto; font-weight: 700; font-size: 14px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cifra-fila.verde .punta { background: var(--verde-claro); }
+.cifra-fila.verde .importe { color: var(--verde-claro); }
+.cifra-fila.morado .punta { background: var(--morado); }
+.cifra-fila.morado .importe { color: var(--morado); }
+.cifra-fila.naranja .punta { background: var(--naranja); }
+.cifra-fila.naranja .importe { color: var(--naranja); }
+.cifra-fila.ocre .punta { background: var(--ocre); }
+.cifra-fila.ocre .importe { color: var(--ocre); }
+.cifra-fila.suave .punta { background: var(--suave); }
+.cifra-fila.suave .importe { color: var(--suave); }
+
+/* --- los últimos cierres --- */
+
+.lista-cierres { display: flex; flex-direction: column; }
+.cierre {
+  font: inherit; display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: 0;
+  border-bottom: 1px solid rgba(31, 90, 76, .06);
+  padding: 8px 9px; border-radius: 9px;
+  transition: background var(--transicion);
+}
+.cierre:last-child { border-bottom: 0; }
+.cierre:hover { background: rgba(46, 125, 107, .07); }
+.cierre[aria-current="true"] { background: rgba(46, 125, 107, .14); }
+.cierre .dia { font-weight: 700; font-size: 13px; width: 80px; }
+.cierre .quien { color: var(--tenue); font-size: 12px; }
+.cierre .dif {
+  margin-left: auto; font-weight: 700; font-size: 13.5px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cierre .dif.cuadra { color: var(--verde-claro); }
+.cierre .dif.falta { color: var(--rojo); }
+.cierre .dif.sobra { color: var(--ocre); }
+
+/* --- el corte en papel --- */
+
+.solo-imprimir { display: none; }
+
+/* Lo que se imprime es el cuadre, la cadena y los movimientos: la hoja que
+   se archiva o se le entrega al dueño. Fuera la barra, los botones y los
+   formularios, que en papel no sirven para nada. */
+@media print {
+  body {
+    background: #fff; overflow: visible;
+    color: #000; font-size: 12px;
+  }
+  #root { display: block; height: auto; }
+  .nav, .banda-licencia, .no-imprimir { display: none !important; }
+  .cuerpo, .cuerpo.corte {
+    display: block; overflow: visible; padding: 0; height: auto;
+  }
+  .tarjeta {
+    background: #fff; border: 1px solid #CCC; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    break-inside: avoid; margin-bottom: 10px;
+  }
+  .solo-imprimir {
+    display: block; margin: 0 0 12px;
+    font-size: 14px; font-weight: 700; color: var(--verde-oscuro);
+  }
+  /* En papel el contado es un número, no una casilla que rellenar. */
+  .cuadre input.contado {
+    border: 0; background: transparent; padding: 0; color: var(--verde);
+  }
+  .cuadre { border-color: #CCC; }
+  .cierre { break-inside: avoid; }
+}
 
 
 /* ------------------------------------------------- diálogo de deuda */

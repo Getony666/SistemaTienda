@@ -156,6 +156,34 @@ def verificar_y_crear_columnas():
                 )
             ''')
             conn.commit()
+        # El cierre de caja de cada día. La fecha es la clave: un día, un
+        # cierre. Volver a cerrar el mismo día sustituye la fila, que es lo
+        # que pasa cuando se reabre para contar otra vez. Se guardan a la vez
+        # lo esperado y lo contado porque es una foto: el esperado de hace un
+        # mes no se recalcula, se mira tal como estaba esa noche.
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='cierres_caja'")
+        if not cursor.fetchone():
+            cursor.execute('''
+                CREATE TABLE cierres_caja (
+                    fecha TEXT PRIMARY KEY,
+                    cerrado_en TEXT NOT NULL,
+                    usuario TEXT DEFAULT '',
+                    esperado_cup REAL DEFAULT 0,
+                    contado_cup REAL DEFAULT 0,
+                    esperado_usd REAL DEFAULT 0,
+                    contado_usd REAL DEFAULT 0,
+                    esperado_eur REAL DEFAULT 0,
+                    contado_eur REAL DEFAULT 0,
+                    fondo REAL DEFAULT 0,
+                    ventas_dia REAL DEFAULT 0,
+                    utilidad_dia REAL DEFAULT 0,
+                    transferencias REAL DEFAULT 0,
+                    deudas_pendientes REAL DEFAULT 0,
+                    nota TEXT DEFAULT ''
+                )
+            ''')
+            conn.commit()
+
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='historial'")
         if not cursor.fetchone():
             cursor.execute('''
