@@ -9,7 +9,7 @@ Punto de venta de una tienda cubana. Lógica en Python, interfaz en React
 dentro de una ventana de escritorio (pywebview + WebView2), todo empaquetado
 en un solo `.exe` con PyInstaller.
 
-Raíz del proyecto: `C:\Users\Mirielys\Documents\Py\MiTienda-Dev`
+Raíz del proyecto: `C:\Users\Mirielys\Documents\EKV\Py\MiTienda-Dev`
 
 ## Las tres trampas de este proyecto
 

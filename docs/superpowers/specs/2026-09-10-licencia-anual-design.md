@@ -79,7 +79,7 @@ vencimiento sin tocar el reloj del sistema.
 
 Se genera **una sola vez** un par Ed25519:
 
-- **Privada** (32 bytes) → `C:\Users\Mirielys\Documents\Py\!Salva\llaves\mitienda_privada.key`.
+- **Privada** (32 bytes) → `C:\Users\Mirielys\Documents\EKV\Py\!Salva\llaves\mitienda_privada.key`.
   Fuera del repositorio. **Si se pierde, no se le puede renovar a ningún cliente
   nunca más.** Requiere un segundo respaldo en soporte físico distinto.
 - **Pública** (32 bytes) → constante en `mitienda/licencia.py`. Que la vean los
